@@ -40,6 +40,7 @@ export const signup = async (req: Request, res: Response) => {
       success: true,
       message: "Signup successful",
       data: {
+        id: user.id,
         name: name,
         image: user.image,
         email: email,
@@ -51,6 +52,57 @@ export const signup = async (req: Request, res: Response) => {
       success: false,
       message: "Server error",
     });
+  }
+};
+export const getAllConverSationUsers = async (req: Request, res: Response) => {
+  const { loggedInUserId } = req.query;
+  console.log("loged userid  for conversation", loggedInUserId);
+  try {
+    const conversations = await prisma.chatConversation.findMany({
+      where: {
+        OR: [
+          { currentUserId: Number(loggedInUserId) },
+          { chatUserId: Number(loggedInUserId) },
+        ],
+      },
+      include: {
+        chatUser: true,
+        currentUser: true,
+      },
+      orderBy: {
+        lastMessage: "desc",
+      },
+    });
+
+    const formatedCobnversation = conversations.map((conversation) => {
+      const isLoggedUserIschatUser =
+        conversation.chatUser?.id === Number(loggedInUserId);
+      return {
+        id: conversation?.id,
+        lastMessage: conversation?.lastMessage,
+        lastMessageCreatedAt: conversation?.lastMessageCreatedAt,
+        chatUser: isLoggedUserIschatUser
+          ? {
+              id: conversation.currentUser?.id,
+              name: conversation.currentUser?.name,
+              image: conversation.currentUser?.image,
+              LastActiveAt: conversation.currentUser?.LastActiveAt,
+            }
+          : {
+              id: conversation.chatUser?.id,
+              name: conversation.chatUser?.name,
+              image: conversation.chatUser?.image,
+              LastActiveAt: conversation.chatUser?.LastActiveAt,
+            },
+      };
+    });
+    return res.status(200).json({
+      success: true,
+      message: "conversation users gated successfully",
+      formatedCobnversation,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error });
   }
 };
 
@@ -76,7 +128,7 @@ export const login = async (req: Request, res: Response) => {
       success: true,
       message: "User login successfully",
       user: {
-        id:userExist.id,
+        id: userExist.id,
         name: userExist.name,
         email: userExist.email,
         image: userExist.image,
@@ -86,6 +138,7 @@ export const login = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: error });
   }
 };
+
 export const getAllFriends = async (req: Request, res: Response) => {
   const { id } = req.params;
   console.log(id);

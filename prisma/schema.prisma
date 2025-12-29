@@ -13,24 +13,38 @@ datasource db {
   provider = "postgresql"
 }
 
-model User{
-  id  Int @id @default(autoincrement())
-  name String
-  email String @unique
-  password String
-  image String?
-  messageSent Messages[] @relation("setMessage")
- messageReciev Messages[] @relation("recievMessage")
+model User {
+  id            Int                @id @default(autoincrement())
+  name          String
+  email         String             @unique
+  password      String
+  image         String?
+  messageSent   Messages[]         @relation("setMessage")
+  messageReciev Messages[]         @relation("recievMessage")
+  currentUser   ChatConversation[] @relation("currentUser")
+  ChatUser      ChatConversation[] @relation("chatUser")
+  LastActiveAt  DateTime?
   createdAt DateTime @default(now())
 }
 
- model Messages{
-  id Int @id @default(autoincrement())
-  text String
-  sender User @relation("setMessage",fields: [senderId],references: [id])
-  receiver  User @relation("recievMessage",fields: [receiverId ],references: [id])
-  senderId Int
-  receiverId Int
-  createdAt DateTime @default(now())
+model Messages {
+  id            Int      @id @default(autoincrement())
+  text          String?
+  sender        User     @relation("setMessage", fields: [senderId], references: [id])
+  receiver      User     @relation("recievMessage", fields: [receiverId], references: [id])
+  senderId      Int
+  receiverId    Int
+  deletedByMeId Int?
+  deletedForAll Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
 
- }
+model ChatConversation {
+  id            Int  @id @default(autoincrement())
+  currentUserId Int
+  chatUserId    Int
+  currentUser   User @relation("currentUser", fields: [currentUserId], references: [id])
+  chatUser      User @relation("chatUser", fields: [chatUserId], references: [id])
+  lastMessage          String
+  lastMessageCreatedAt DateTime @default(now())
+}

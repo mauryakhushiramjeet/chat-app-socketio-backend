@@ -73,3 +73,91 @@ export const addMessage = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: error });
   }
 };
+
+// export const deleteMessageForMe = async (req: Request, res: Response) => {
+//   const { messageId, senderId } = req.body;
+//   try {
+//     if (!messageId || !senderId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "messageId and senderId are required",
+//       });
+//     }
+//     const message = await prisma.messages.findUnique({
+//       where: { id: messageId },
+//     });
+//     if (!message) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "message not found" });
+//     }
+//     if (message.deletedByMeId === senderId) {
+//       return res.status(409).json({
+//         success: false,
+//         message: "Message already deleted for you.",
+//       });
+//     }
+//     if (message.senderId !== senderId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "You are not authorized to delete this message.",
+//       });
+//     }
+//     await prisma.messages.update({
+//       where: { id: messageId },
+//       data: {
+//         deletedByMeId: senderId,
+//       },
+//     });
+//     return res.status(200).json({
+//       success: true,
+//       message: "Message deleted for you successfully.",
+//     });
+//   } catch (error) {
+//     return res.status(500).json({ success: false, message: error });
+//   }
+// };
+// export const deleteMsgForEverone = async (req: Request, res: Response) => {
+//   const { messageId, senderId } = req.body;
+//   try {
+//     if (!messageId || !senderId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "messageId and senderId are required",
+//       });
+//     }
+//     const message = await prisma.messages.findUnique({
+//       where: { id: messageId },
+//     });
+//     if (!message) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "message not found" });
+//     }
+//     if (message.deletedByMeId === senderId) {
+//       return res.status(409).json({
+//         success: false,
+//         message: "Message already deleted.",
+//       });
+//     }
+//     if (message.senderId !== senderId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "You are not authorized to delete this message.",
+//       });
+//     }
+//     await prisma.messages.update({
+//       where: { id: messageId },
+//       data: {
+//         deletedForAll: true,
+//         deletedByMeId: senderId,
+//       },
+//     });
+//     return res.status(200).json({
+//       success: true,
+//       message: "Message deleted for evryone successfully.",
+//     });
+//   } catch (error) {
+//     return res.status(500).json({ success: false, message: error });
+//   }
+// };

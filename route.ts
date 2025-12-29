@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getAllConverSationUsers,
   getAllFriends,
   getCurrentUser,
   login,
@@ -17,5 +18,5 @@ router.get("/getFriends/:id", getAllFriends);
 router.get("/logedInUser/:id", getCurrentUser);
 router.post("/addMessage", addMessage);
 router.get("/getMessages", getMessages);
-
+router.get("/userConversations", getAllConverSationUsers);
 export default router;
