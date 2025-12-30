@@ -24,7 +24,14 @@ model User {
   currentUser   ChatConversation[] @relation("currentUser")
   ChatUser      ChatConversation[] @relation("chatUser")
   LastActiveAt  DateTime?
-  createdAt DateTime @default(now())
+  createdAt     DateTime           @default(now())
+}
+
+enum Status {
+  Pending
+  Send
+  Delivered
+  Read
 }
 
 model Messages {
@@ -35,16 +42,17 @@ model Messages {
   senderId      Int
   receiverId    Int
   deletedByMeId Int?
+  status        String   @default("Pending")
   deletedForAll Boolean  @default(false)
   createdAt     DateTime @default(now())
 }
 
 model ChatConversation {
-  id            Int  @id @default(autoincrement())
-  currentUserId Int
-  chatUserId    Int
-  currentUser   User @relation("currentUser", fields: [currentUserId], references: [id])
-  chatUser      User @relation("chatUser", fields: [chatUserId], references: [id])
+  id                   Int      @id @default(autoincrement())
+  currentUserId        Int
+  chatUserId           Int
+  currentUser          User     @relation("currentUser", fields: [currentUserId], references: [id])
+  chatUser             User     @relation("chatUser", fields: [chatUserId], references: [id])
   lastMessage          String
   lastMessageCreatedAt DateTime @default(now())
 }

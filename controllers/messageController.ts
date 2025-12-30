@@ -31,6 +31,7 @@ export const getMessages = async (req: Request, res: Response) => {
 };
 export const addMessage = async (req: Request, res: Response) => {
   const { senderId, receiverId, text } = req.body;
+  // console.log("text gated in api", text);
   try {
     if (!senderId || !receiverId) {
       return res.status(400).json({
@@ -62,8 +63,11 @@ export const addMessage = async (req: Request, res: Response) => {
         text: text,
         senderId,
         receiverId,
+        status: "Send",
       },
     });
+    console.log(messages);
+
     return res.status(201).json({
       success: true,
       message: "message sended successfully",
