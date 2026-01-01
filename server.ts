@@ -9,13 +9,13 @@ import { prisma } from "./lib/prisma";
 const PORT = process.env.PORT || 8050;
 const app = express();
 app.use(cors({ origin: "http://localhost:3000" }));
-const server = http.createServer(app);
-const io = new Server(server, {
+export const server = http.createServer(app);
+export const io = new Server(server, {
   cors: {
     origin: "http://localhost:3000",
   },
 });
-const onlineUsers: { [key: string]: string } = {};
+export const onlineUsers: { [key: string]: string } = {};
 app.use(express.json());
 io.on("connection", (socket) => {
   console.log("socket connected:", socket.id);
@@ -110,7 +110,15 @@ io.on("connection", (socket) => {
         conversationId = createdConversation;
       }
       console.log("message gated successfully", text);
-      io.to(roomId).emit("newMessage", {
+      const senderSocketId = onlineUsers[senderId];
+      const receiverSocketId = onlineUsers[receiverId];
+      console.log(senderSocketId, "Sender", receiverSocketId, "receiver");
+      io.to(String(senderSocketId)).emit("newMessage", {
+        clientMessageId,
+        response,
+        conversationId: conversationId,
+      });
+      io.to(String(receiverSocketId)).emit("newMessage", {
         clientMessageId,
         response,
         conversationId: conversationId,
@@ -220,13 +228,101 @@ io.on("connection", (socket) => {
         status: "Read",
       },
     });
-    console.log(message);
+    // console.log(message);
+    // console.log(onlineUsers);
     const senderSocketId = onlineUsers[message?.senderId];
     console.log("Gated signal in server side for read", senderSocketId);
 
     io.to(String(senderSocketId)).emit("status:Read", {
       messageId,
     });
+  });
+  socket.on(
+    "editMessage",
+    async ({ messageId, senderId, newText, receiverId }) => {
+      try {
+        const roomId =
+          senderId < receiverId
+            ? `${senderId}-${receiverId}`
+            : `${receiverId}-${senderId}`;
+        if (!messageId || !senderId || !newText || !receiverId) {
+          socket.emit("editMessage:error", {
+            message: "Required data is missing. Unable to edit the message.",
+          });
+        }
+        const isMessage = await prisma.messages.findUnique({
+          where: {
+            id: messageId,
+          },
+        });
+        if (isMessage?.senderId !== senderId) {
+          socket.emit("editMessage:error", {
+            message: "The owner of this message can only update this message",
+          });
+          return;
+        }
+        if (!isMessage || isMessage?.deletedByMeId !== null) {
+          socket.emit("editMessage:error", {
+            message: "Message not found",
+          });
+        }
+        await prisma.messages.update({
+          where: { id: messageId },
+          data: {
+            text: newText,
+          },
+        });
+
+        io.to(roomId).emit("editMessage", { messageId, newText });
+        // deletedByMeId
+      } catch (error) {}
+    }
+  );
+  socket.on("profile:update", async (data) => {
+    try {
+      console.log(onlineUsers);
+      const { userId, image, name, about } = data;
+      console.log(
+        "geted signal from client to server for profile update",
+        userId,
+        image,
+        name,
+        about
+      );
+      if (!userId) throw new Error("User ID is required");
+
+      // Update user in database
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          image,
+          name,
+          about,
+        },
+      });
+
+      // Emit updated profile to all users or to specific users
+      Object.keys(onlineUsers).forEach((user) => {
+        const socketId = onlineUsers[user];
+        io.to(String(socketId)).emit("profile:updated", {
+          userId: updatedUser.id,
+          image: updatedUser.image,
+          name: updatedUser.name,
+          about: updatedUser.about,
+        });
+        console.log("sendele signal from server to clinet for updted proble");
+      });
+    } catch (err: unknown) {
+      let error = "Something went wrong in profile update";
+      if (err instanceof Error) {
+        error = err.message;
+      }
+      console.error("Profile update error:", error);
+
+      socket.emit("profile:error", {
+        message: error,
+      });
+    }
   });
   socket.on("disconnect", async () => {
     const userId = socket.data.userId;
@@ -244,10 +340,11 @@ io.on("connection", (socket) => {
         LastActiveAt: new Date(),
       },
     });
-    console.log("user last login updated", userUpadted);
+    // console.log("user last login updated", userUpadted);
     io.emit("user-disconnected", disconnectedUserId);
     console.log(onlineUsers);
   });
+ 
 });
 
 server.listen(PORT, () => {

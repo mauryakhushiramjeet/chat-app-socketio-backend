@@ -20,13 +20,39 @@ export const getMessages = async (req: Request, res: Response) => {
           { senderId: Number(receiverId), receiverId: Number(senderId) },
         ],
       },
+      orderBy: {
+        createdAt: "asc",
+      },
     });
 
     return res
       .status(200)
       .json({ success: true, message: "message get successfully", messages });
   } catch (error) {
-    console.log(error);
+    return res.status(500).json({ success: false, message: error });
+  }
+};
+export const getAllMyMessages = async (req: Request, res: Response) => {
+  const { receiverId } = req.query;
+  // console.log(receiverId,"reciver id is here");
+  try {
+    if (!receiverId) return;
+    const messages = await prisma.messages.findMany({
+      where: { receiverId: Number(receiverId), status: "Send" },
+    });
+    if (messages.length === 0) {
+      return res.status(200).json({
+        success: false,
+        message: "For this receiver no message is created yet",
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      message: "All messages is fetched successfully",
+      messages,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error });
   }
 };
 export const addMessage = async (req: Request, res: Response) => {
@@ -66,7 +92,7 @@ export const addMessage = async (req: Request, res: Response) => {
         status: "Send",
       },
     });
-    console.log(messages);
+    // console.log(messages);
 
     return res.status(201).json({
       success: true,

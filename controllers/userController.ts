@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 
 import { prisma } from "../lib/prisma";
 import type { Request, Response } from "express";
+import { io, onlineUsers } from "../server";
 
 export const signup = async (req: Request, res: Response) => {
   try {
@@ -44,6 +45,7 @@ export const signup = async (req: Request, res: Response) => {
         name: name,
         image: user.image,
         email: email,
+        about: user?.about,
       },
     });
   } catch (error) {
@@ -56,7 +58,7 @@ export const signup = async (req: Request, res: Response) => {
 };
 export const getAllConverSationUsers = async (req: Request, res: Response) => {
   const { loggedInUserId } = req.query;
-  console.log("loged userid  for conversation", loggedInUserId);
+  // console.log("loged userid  for conversation", loggedInUserId);
   try {
     const conversations = await prisma.chatConversation.findMany({
       where: {
@@ -132,6 +134,7 @@ export const login = async (req: Request, res: Response) => {
         name: userExist.name,
         email: userExist.email,
         image: userExist.image,
+        about: userExist?.about,
       },
     });
   } catch (error) {
@@ -180,6 +183,50 @@ export const getCurrentUser = async (req: Request, res: Response) => {
       .json({ success: true, message: "get logedInUser details", friends });
   } catch (error) {
     console.log(error);
+    return res.status(500).json({ success: false, message: error });
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+  const { userId, name, about } = req.body;
+  console.log("user id is", typeof userId, name, about);
+  try {
+    if (!userId || !name || !about) {
+      return res.status(400).json({
+        success: true,
+        message: "Name, bout of user and user id is required",
+      });
+    }
+    const updatedUser = await prisma.user.update({
+      where: { id: Number(userId) },
+      data: {
+        image: req.file ? req.file.path : null,
+        name,
+        about,
+      },
+    });
+    Object.keys(onlineUsers).forEach((user) => {
+      const socketId = onlineUsers[user];
+      io.to(String(socketId)).emit("profile:updated", {
+        userId: updatedUser.id,
+        image: updatedUser.image,
+        name: updatedUser.name,
+        about: updatedUser.about,
+      });
+      console.log("Sent profile update signal to client");
+    });
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        image: updatedUser.image,
+        about: updatedUser?.about,
+      },
+    });
+  } catch (error) {
     return res.status(500).json({ success: false, message: error });
   }
 };
