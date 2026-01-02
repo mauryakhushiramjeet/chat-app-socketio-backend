@@ -8,8 +8,9 @@ import {
   updateProfile,
 } from "./controllers/userController";
 import upload from "./lib/cloudinary";
-import { addMessage, getAllMyMessages, getMessages } from "./controllers/messageController";
+import { addMessage, getAllMyMessages, getGroupMessages, getMessages } from "./controllers/messageController";
 import { createGroup } from "./controllers/groupController";
+import { sidebarChatList } from "./controllers/sidebarController";
 
 const router = Router();
 
@@ -24,4 +25,6 @@ router.get("/userConversations", getAllConverSationUsers);
 router.get("/getAllMyMessages",getAllMyMessages)
 router.put("/updateProfile",upload.single("image"),updateProfile)
 router.post("/createGroup",upload.single('image'),createGroup)
+router.get("/getSidebarChatList",sidebarChatList)
+router.get("/getGroupMessages",getGroupMessages)
 export default router;

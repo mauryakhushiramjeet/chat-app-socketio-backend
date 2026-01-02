@@ -191,3 +191,47 @@ export const addMessage = async (req: Request, res: Response) => {
 //     return res.status(500).json({ success: false, message: error });
 //   }
 // };
+export const getGroupMessages = async (req: Request, res: Response) => {
+  const { groupId } = req.query;
+  console.log(groupId, "sdfkjkjsh group id");
+  if (!groupId) {
+    return res.status(400).json({
+      success: false,
+      message: "Group ID is required",
+    });
+  }
+
+  try {
+    // Fetch messages with sender info
+    const messages = await prisma.groupMessage.findMany({
+      where: {
+        groupId: Number(groupId),
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Messages fetched successfully",
+      messages,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error,
+    });
+  }
+};

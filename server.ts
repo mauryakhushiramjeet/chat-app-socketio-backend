@@ -6,6 +6,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 import axios from "axios";
 import { prisma } from "./lib/prisma";
+import { use } from "react";
 const PORT = process.env.PORT || 8050;
 const app = express();
 app.use(cors({ origin: "http://localhost:3000" }));
@@ -61,7 +62,7 @@ io.on("connection", (socket) => {
   });
   socket.on(
     "sendMessage",
-    async ({ clientMessageId, senderId, receiverId, text }) => {
+    async ({ clientMessageId, senderId, receiverId, text, type }) => {
       const roomId =
         senderId < receiverId
           ? `${senderId}-${receiverId}`
@@ -117,15 +118,83 @@ io.on("connection", (socket) => {
         clientMessageId,
         response,
         conversationId: conversationId,
+        targetChatUserId: receiverId,
+        type,
       });
       io.to(String(receiverSocketId)).emit("newMessage", {
         clientMessageId,
         response,
         conversationId: conversationId,
+        targetChatUserId: receiverId,
+        type,
       });
     }
   );
-
+  socket.on(
+    "sendGroupMessage",
+    async ({ groupId, message, messageSenderId }) => {
+      console.log(
+        "geted sendMessagesignal at server",
+        groupId,
+        message,
+        messageSenderId
+      );
+      try {
+        const group = await prisma.group.findUnique({
+          where: {
+            id: Number(groupId),
+          },
+          select: {
+            groupMembers: {
+              select: {
+                userId: true,
+              },
+            },
+          },
+        });
+        if (!group) {
+          throw new Error("This group is not available");
+        }
+        const isMember = group.groupMembers.some(
+          (user) => String(user.userId) === String(messageSenderId)
+        );
+        if (!isMember) {
+          throw new Error("Only group joined user can send message");
+        }
+        const createMessage = await prisma.groupMessage.create({
+          data: {
+            text: message,
+            createdAt: new Date(),
+            groupId: Number(groupId),
+            userId: messageSenderId,
+          },
+          include: {
+            sender: {
+              select: {
+                name: true,
+                image: true,
+                id: true,
+              },
+            },
+          },
+        });
+        group.groupMembers.map((user) =>
+          console.log(user.userId, "user id is here ")
+        );
+        group.groupMembers.map((user) => {
+          const socketId = onlineUsers[user?.userId];
+          io.to(String(socketId)).emit("receiveGropMessage", {
+            groupId: `group-${groupId}`,
+            message,
+            messageId: createMessage?.id,
+            sender: createMessage?.sender,
+          });
+        });
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  );
   socket.on("status:delivered", async ({ messageId }) => {
     const message = await prisma.messages.findUnique({
       where: { id: messageId },
@@ -344,7 +413,6 @@ io.on("connection", (socket) => {
     io.emit("user-disconnected", disconnectedUserId);
     console.log(onlineUsers);
   });
- 
 });
 
 server.listen(PORT, () => {

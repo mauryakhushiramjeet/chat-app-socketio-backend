@@ -15,7 +15,7 @@ export const createGroup = async (req: Request, res: Response) => {
     let selectedMembersRow;
     if (!Array.isArray(selectedMembers)) {
       selectedMembersRow = [selectedMembers];
-      console.log("array is crete")
+      console.log("array is crete");
     }
 
     selectedMembersRow = selectedMembers.map(Number);
@@ -63,12 +63,14 @@ export const createGroup = async (req: Request, res: Response) => {
       });
       groupMembers.push(gm);
     }
-
+    console.log(groupMembers, "here is group members");
     selectedMembers.forEach((userId: any) => {
       const socketId = onlineUsers[userId];
       if (socketId) {
         io.to(socketId).emit("groupCreate", {
-          group,
+          id:group?.id,
+          name:group?.name,
+          image:group?.image,
           members,
         });
       }
