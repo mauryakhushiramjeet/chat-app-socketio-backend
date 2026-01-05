@@ -11,6 +11,14 @@ export const sidebarChatList = async (req: Request, res: Response) => {
         message: "LoggedIn user id is required.",
       });
     }
+    const messages = await prisma.messages.findMany({
+      where: {
+        OR: [
+          { senderId: Number(loggedInUserId) },
+          { receiverId: Number(loggedInUserId) },
+        ],
+      },
+    });
     const conversations = await prisma.chatConversation.findMany({
       where: {
         OR: [
@@ -27,7 +35,43 @@ export const sidebarChatList = async (req: Request, res: Response) => {
       },
     });
 
-    const formatedChatConversation = conversations.map((conversation) => {
+    const updatedConversation = conversations.map((chatConversation) => {
+      const lastMessage = messages.find(
+        (msg) => msg.id === chatConversation.lastMessageId
+      );
+      // console.log(lastMessage, "last deleted message");
+      if (lastMessage?.deletedByMeId === Number(loggedInUserId)) {
+        const chatMessages = messages
+          .filter(
+            (msg) =>
+              (msg.senderId === chatConversation.currentUserId &&
+                msg.receiverId === chatConversation.chatUserId) ||
+              (msg.senderId === chatConversation.chatUserId &&
+                msg.receiverId === chatConversation.currentUserId)
+          )
+          .filter((msg) => msg.deletedByMeId !== Number(loggedInUserId))
+          .sort(
+            (a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+        console.log("chat message is here", chatMessages, "this");
+        const newLastMessage = chatMessages.length
+          ? chatMessages[chatMessages.length - 1]
+          : null;
+        console.log(newLastMessage, "ne last message slist");
+        return {
+          ...chatConversation,
+          lastMessage: newLastMessage
+            ? newLastMessage.text
+            : "This message was deleted",
+          lastMessageId: newLastMessage ? newLastMessage.id : null,
+        };
+      }
+      return chatConversation;
+    });
+
+    console.log("conversation chat ", updatedConversation);
+    const formatedChatConversation = updatedConversation.map((conversation) => {
       const isLoggedUserIschatUser =
         conversation.chatUser?.id === Number(loggedInUserId);
       return {
@@ -35,6 +79,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
         type: "chat",
         lastMessage: conversation?.lastMessage,
         lastMessageCreatedAt: conversation?.lastMessageCreatedAt,
+        lastMessageId: conversation.lastMessageId,
         chatUser: isLoggedUserIschatUser
           ? {
               id: conversation.currentUser?.id,
@@ -50,7 +95,6 @@ export const sidebarChatList = async (req: Request, res: Response) => {
             },
       };
     });
-
     const groupConversation = await prisma.group.findMany({
       where: {
         groupMembers: {
@@ -89,7 +133,6 @@ export const sidebarChatList = async (req: Request, res: Response) => {
       ...formatedChatConversation,
       ...formatedGroupConversation,
     ];
-    console.log("jhkljhkjhkjh", formatedGroupConversation);
     return res.status(200).json({
       success: true,
       message: "get all the all sidebar conversation successfully",

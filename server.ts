@@ -38,7 +38,6 @@ io.on("connection", (socket) => {
     console.log("TOTAL SOCKETS:", clients ? clients.size : 0);
   });
   socket.on("typing", ({ senderId, receiverId }) => {
-    console.log("typing signle recive");
     const roomId =
       senderId < receiverId
         ? `${senderId}-${receiverId}`
@@ -92,6 +91,7 @@ io.on("connection", (socket) => {
           data: {
             lastMessage: text,
             lastMessageCreatedAt: new Date(),
+            lastMessageId: response?.id,
           },
         });
         conversationId = conversation;
@@ -102,6 +102,7 @@ io.on("connection", (socket) => {
             currentUserId: senderId,
             chatUserId: receiverId,
             lastMessage: text,
+            lastMessageId: response?.id,
             lastMessageCreatedAt: new Date(),
           },
           include: {
@@ -110,10 +111,8 @@ io.on("connection", (socket) => {
         });
         conversationId = createdConversation;
       }
-      console.log("message gated successfully", text);
       const senderSocketId = onlineUsers[senderId];
       const receiverSocketId = onlineUsers[receiverId];
-      console.log(senderSocketId, "Sender", receiverSocketId, "receiver");
       io.to(String(senderSocketId)).emit("newMessage", {
         clientMessageId,
         response,
@@ -133,12 +132,6 @@ io.on("connection", (socket) => {
   socket.on(
     "sendGroupMessage",
     async ({ groupId, message, messageSenderId }) => {
-      console.log(
-        "geted sendMessagesignal at server",
-        groupId,
-        message,
-        messageSenderId
-      );
       try {
         const group = await prisma.group.findUnique({
           where: {
@@ -178,9 +171,7 @@ io.on("connection", (socket) => {
             },
           },
         });
-        group.groupMembers.map((user) =>
-          console.log(user.userId, "user id is here ")
-        );
+
         group.groupMembers.map((user) => {
           const socketId = onlineUsers[user?.userId];
           io.to(String(socketId)).emit("receiveGropMessage", {
@@ -218,7 +209,7 @@ io.on("connection", (socket) => {
 
   socket.on(
     "message:delete",
-    async ({ messageId, senderId, receiverId, type }) => {
+    async ({ messageId, senderId, receiverId, type, chatType }) => {
       try {
         if (!messageId || !senderId) {
           socket.emit("message:error", {
@@ -226,9 +217,29 @@ io.on("connection", (socket) => {
           });
           return;
         }
-        const message = await prisma.messages.findUnique({
-          where: { id: messageId },
-        });
+        let message;
+        let groupChat = null;
+        let privateChat = null;
+        const isGroupChat = chatType === "group" ? true : false;
+        if (isGroupChat) {
+          message = await prisma.groupMessage.findUnique({
+            where: { id: messageId },
+            include: {
+              group: {
+                select: {
+                  groupMembers: true,
+                },
+              },
+            },
+          });
+          groupChat = message;
+        } else {
+          message = await prisma.messages.findUnique({
+            where: { id: messageId },
+          });
+          privateChat = message;
+        }
+
         if (!message) {
           socket.emit("message:error", {
             message: "message not found",
@@ -241,18 +252,31 @@ io.on("connection", (socket) => {
           });
           return;
         }
-        if (message.senderId !== senderId) {
-          console.log(
-            message.text,
-            "this message senderId is",
-            message?.senderId,
-            "and the signle of this sender Id is ",
-            senderId
-          );
-          socket.emit("message:error", {
-            message: "You are not authorized to delete this message",
+        if (isGroupChat) {
+          if (groupChat?.userId !== senderId) {
+            socket.emit("message:error", {
+              message: "You are not authorized to delete this message",
+            });
+            return;
+          }
+        } else {
+          if (privateChat?.senderId !== senderId) {
+            socket.emit("message:error", {
+              message: "You are not authorized to delete this message",
+            });
+            return;
+          }
+        }
+
+        if (isGroupChat) {
+          groupChat?.group.groupMembers.map((user) => {
+            const socketId = onlineUsers[user?.userId];
+            io.to(String(socketId)).emit("message:delete", {
+              groupId: `group-${senderId}`,
+              messageId: messageId?.id,
+              chatType: "group",
+            });
           });
-          return;
         }
         const roomId =
           senderId < receiverId
@@ -260,34 +284,94 @@ io.on("connection", (socket) => {
             : `${receiverId}-${senderId}`;
 
         if (type == "FOR_ME") {
-          await prisma.messages.update({
-            where: { id: messageId },
-            data: {
-              deletedByMeId: senderId,
-            },
-          });
-          socket.emit("message:deleted", {
-            messageId,
-            type: "FOR_ME",
-          });
+          if (isGroupChat) {
+            await prisma.groupMessage.update({
+              where: { id: messageId },
+              data: {
+                deletedByMeId: senderId,
+              },
+            });
+            socket.emit("message:deleted", {
+              messageId,
+              type: "FOR_ME",
+              chatType: "group",
+            });
+          } else {
+            await prisma.messages.update({
+              where: { id: messageId },
+              data: {
+                deletedByMeId: senderId,
+              },
+            });
+            socket.emit("message:deleted", {
+              messageId,
+              type: "FOR_ME",
+              chatType: "chat",
+            });
+          }
         }
         if (type === "FOR_EVERYONE") {
-          console.log("server get signal for message delete everyOne");
-          await prisma.messages.update({
-            where: { id: messageId },
-            data: { deletedForAll: true, text: null },
-          });
+          if (isGroupChat) {
+            await prisma.groupMessage.update({
+              where: { id: messageId },
+              data: { deletedForAll: true, text: null },
+            });
+            groupChat?.group.groupMembers.map((user) => {
+              const socketId = onlineUsers[user?.userId];
+              io.to(String(socketId)).emit("message:deleted", {
+                messageId: messageId,
+                chatType: "group",
+                type: "FOR_EVERYONE",
+              });
+            });
+          } else {
+            await prisma.messages.update({
+              where: { id: messageId },
+              data: { deletedForAll: true, text: null },
+            });
 
-          io.to(roomId).emit("message:deleted", {
-            messageId,
-            type: "FOR_EVERYONE",
-          });
+            io.to(roomId).emit("message:deleted", {
+              messageId,
+              type: "FOR_EVERYONE",
+              chatType: "chat",
+            });
+          }
         }
       } catch (error) {
         socket.emit("message:error", {
           message: error,
         });
       }
+    }
+  );
+  socket.on(
+    "sidebar:update",
+    async (chatType, senderId, receiverId, messageId) => {
+      const chatConversation = await prisma.chatConversation.findMany({
+        where: {
+          lastMessageId: messageId,
+        },
+      });
+      const messages = await prisma.messages.findMany();
+      const lastMessages = messages
+        .filter(
+          (msg) =>
+            (msg.senderId === senderId && msg.receiverId === receiverId) ||
+            (msg.senderId === senderId && msg.receiverId === receiverId)
+        )
+        .filter((msg) => msg.deletedByMeId !== senderId)
+        .sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      await prisma.chatConversation.update({
+        where: {
+          lastMessageId: Number(messageId),
+        },
+        data:{
+          lastMessage:lastMessages.length>0?lastMessages
+        }
+      });
     }
   );
   socket.on("status:Read", async ({ messageId }) => {
@@ -297,10 +381,8 @@ io.on("connection", (socket) => {
         status: "Read",
       },
     });
-    // console.log(message);
-    // console.log(onlineUsers);
+
     const senderSocketId = onlineUsers[message?.senderId];
-    console.log("Gated signal in server side for read", senderSocketId);
 
     io.to(String(senderSocketId)).emit("status:Read", {
       messageId,
@@ -308,56 +390,79 @@ io.on("connection", (socket) => {
   });
   socket.on(
     "editMessage",
-    async ({ messageId, senderId, newText, receiverId }) => {
+    async ({ messageId, senderId, newText, receiverId, type }) => {
       try {
-        const roomId =
-          senderId < receiverId
-            ? `${senderId}-${receiverId}`
-            : `${receiverId}-${senderId}`;
-        if (!messageId || !senderId || !newText || !receiverId) {
-          socket.emit("editMessage:error", {
-            message: "Required data is missing. Unable to edit the message.",
+        if (!messageId || !senderId || !newText) {
+          return socket.emit("message:error", {
+            message: "Required data missing",
           });
         }
-        const isMessage = await prisma.messages.findUnique({
-          where: {
-            id: messageId,
-          },
-        });
-        if (isMessage?.senderId !== senderId) {
-          socket.emit("editMessage:error", {
-            message: "The owner of this message can only update this message",
-          });
-          return;
-        }
-        if (!isMessage || isMessage?.deletedByMeId !== null) {
-          socket.emit("editMessage:error", {
-            message: "Message not found",
-          });
-        }
-        await prisma.messages.update({
-          where: { id: messageId },
-          data: {
-            text: newText,
-          },
-        });
 
-        io.to(roomId).emit("editMessage", { messageId, newText });
-        // deletedByMeId
-      } catch (error) {}
+        if (type === "chat") {
+          const message = await prisma.messages.findUnique({
+            where: { id: messageId },
+          });
+
+          if (!message || message.senderId !== senderId) return;
+          await prisma.messages.update({
+            where: { id: messageId },
+            data: { text: newText },
+          });
+
+          const roomId =
+            senderId < receiverId
+              ? `${senderId}-${receiverId}`
+              : `${receiverId}-${senderId}`;
+
+          io.to(roomId).emit("editMessage", {
+            messageId,
+            newText,
+            chatType: "chat",
+          });
+        }
+
+        if (type === "group") {
+          const message = await prisma.groupMessage.findUnique({
+            where: { id: messageId },
+          });
+
+          if (!message || message.userId !== senderId) return;
+
+          const groupChat = await prisma.groupMessage.update({
+            where: { id: messageId },
+            data: { text: newText },
+            include: {
+              group: {
+                select: {
+                  groupMembers: true,
+                },
+              },
+            },
+          });
+
+          groupChat?.group.groupMembers.forEach((user: any) => {
+            const socketId = onlineUsers[user.userId];
+            if (socketId) {
+              io.to(socketId).emit("editMessage", {
+                messageId,
+                newText,
+                chatType: "group",
+              });
+            }
+          });
+        }
+      } catch (error) {
+        socket.emit("message:error", {
+          message: "Something went wrong while editing message",
+        });
+      }
     }
   );
+
   socket.on("profile:update", async (data) => {
     try {
-      console.log(onlineUsers);
       const { userId, image, name, about } = data;
-      console.log(
-        "geted signal from client to server for profile update",
-        userId,
-        image,
-        name,
-        about
-      );
+
       if (!userId) throw new Error("User ID is required");
 
       // Update user in database
@@ -379,14 +484,12 @@ io.on("connection", (socket) => {
           name: updatedUser.name,
           about: updatedUser.about,
         });
-        console.log("sendele signal from server to clinet for updted proble");
       });
     } catch (err: unknown) {
       let error = "Something went wrong in profile update";
       if (err instanceof Error) {
         error = err.message;
       }
-      console.error("Profile update error:", error);
 
       socket.emit("profile:error", {
         message: error,
@@ -409,9 +512,7 @@ io.on("connection", (socket) => {
         LastActiveAt: new Date(),
       },
     });
-    // console.log("user last login updated", userUpadted);
     io.emit("user-disconnected", disconnectedUserId);
-    console.log(onlineUsers);
   });
 });
 

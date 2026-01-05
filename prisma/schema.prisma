@@ -57,6 +57,7 @@ model ChatConversation {
   currentUser          User     @relation("currentUser", fields: [currentUserId], references: [id])
   chatUser             User     @relation("chatUser", fields: [chatUserId], references: [id])
   lastMessage          String
+  lastMessageId        Int?
   lastMessageCreatedAt DateTime @default(now())
 }
 
@@ -79,12 +80,13 @@ model GroupMembers {
 }
 
 model GroupMessage {
-  id        Int      @id @default(autoincrement())
-  text      String
-  groupId   Int
-  userId    Int
-  sender    User     @relation(fields: [userId], references: [id])
-  group     Group    @relation(fields: [groupId], references: [id])
-  createdAt DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  text          String?
+  groupId       Int
+  userId        Int
+  deletedByMeId Int?
+  deletedForAll Boolean  @default(false)
+  sender        User     @relation(fields: [userId], references: [id])
+  group         Group    @relation(fields: [groupId], references: [id])
+  createdAt     DateTime @default(now())
 }
-
