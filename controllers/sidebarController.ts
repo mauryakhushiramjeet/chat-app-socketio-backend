@@ -1,9 +1,8 @@
-import { group } from "node:console";
 import { prisma } from "../lib/prisma";
 import type { Request, Response } from "express";
 export const sidebarChatList = async (req: Request, res: Response) => {
   const { loggedInUserId } = req.query;
-  console.log("in srver", loggedInUserId);
+  // console.log("in srver", loggedInUserId);
   try {
     if (!loggedInUserId) {
       return res.status(400).json({
@@ -54,23 +53,27 @@ export const sidebarChatList = async (req: Request, res: Response) => {
             (a, b) =>
               new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           );
-        console.log("chat message is here", chatMessages, "this");
+        // console.log("chat message is here", chatMessages, "this");
         const newLastMessage = chatMessages.length
           ? chatMessages[chatMessages.length - 1]
           : null;
-        console.log(newLastMessage, "ne last message slist");
         return {
           ...chatConversation,
-          lastMessage: newLastMessage
-            ? newLastMessage.text
-            : "This message was deleted",
+          lastMessage: newLastMessage ? newLastMessage?.text : "Tab to chat",
           lastMessageId: newLastMessage ? newLastMessage.id : null,
+        };
+      }
+      if (lastMessage?.deletedForAll === true) {
+        return {
+          ...chatConversation,
+          lastMessage: "This message was deleted",
+          lastMessageId: null,
         };
       }
       return chatConversation;
     });
 
-    console.log("conversation chat ", updatedConversation);
+    // console.log("conversation chat ", updatedConversation);
     const formatedChatConversation = updatedConversation.map((conversation) => {
       const isLoggedUserIschatUser =
         conversation.chatUser?.id === Number(loggedInUserId);

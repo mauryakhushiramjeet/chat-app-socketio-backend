@@ -107,24 +107,38 @@ io.on("connection", (socket) => {
           },
           include: {
             chatUser: true,
+            currentUser: true,
           },
         });
         conversationId = createdConversation;
       }
       const senderSocketId = onlineUsers[senderId];
       const receiverSocketId = onlineUsers[receiverId];
+      const senderConversation = {
+        ...conversationId,
+        chatUser: conversationId?.chatUser,
+        currentUser: conversationId?.currentUser,
+      };
+      const receiverConversation = {
+        ...conversationId,
+        chatUser: conversationId?.currentUser, // sender
+        currentUser: conversationId?.chatUser, // receiver
+      };
       io.to(String(senderSocketId)).emit("newMessage", {
         clientMessageId,
         response,
-        conversationId: conversationId,
+        lastMessageId: response?.id,
+        conversationId: senderConversation,
         targetChatUserId: receiverId,
         type,
       });
+
       io.to(String(receiverSocketId)).emit("newMessage", {
         clientMessageId,
         response,
-        conversationId: conversationId,
-        targetChatUserId: receiverId,
+        lastMessageId: response?.id,
+        conversationId: receiverConversation,
+        targetChatUserId: senderId,
         type,
       });
     }
@@ -346,31 +360,88 @@ io.on("connection", (socket) => {
   );
   socket.on(
     "sidebar:update",
-    async (chatType, senderId, receiverId, messageId) => {
-      const chatConversation = await prisma.chatConversation.findMany({
+    async ({ chatType, senderId, receiverId, chatListId, messageId }) => {
+      console.log(
+        "getd signal for sidebar update at derver side",
+        "tye",
+        chatType,
+        "senderId",
+        senderId,
+        "receiverId",
+        receiverId,
+        "chatLostId",
+        chatListId,
+        "messageId",
+        messageId
+      );
+      if (chatType === "group") return;
+
+      const chatConversation = await prisma.chatConversation.findUnique({
+        where: { id: Number(chatListId) },
+      });
+      if (!chatConversation) {
+        console.log("this conversation is not exist");
+        return;
+      }
+      const deleteMessage = await prisma.messages.findUnique({
         where: {
-          lastMessageId: messageId,
+          id: messageId,
         },
       });
+      console.log("deleted message", deleteMessage);
+      const roomId =
+        senderId < receiverId
+          ? `${senderId}-${receiverId}`
+          : `${receiverId}-${senderId}`;
+      if (deleteMessage?.deletedForAll) {
+        console.log(onlineUsers);
+        const senderSocketId = onlineUsers[senderId];
+        const receiverSocketId = onlineUsers[receiverId];
+        console.log(senderSocketId, receiverSocketId);
+
+        io.to(String(senderSocketId)).emit("sidebar:update", {
+          lastMessage: "This message was deleted",
+          sidebarChatId: chatConversation.id,
+          type: chatType,
+          lastMessageId: null,
+          lastMessageCreatedAt: null,
+          deleteType: "For_Everypone",
+        });
+        socket.to(String(receiverSocketId)).emit("sidebar:update", {
+          lastMessage: "This message was deleted",
+          sidebarChatId: chatConversation.id,
+          type: chatType,
+          lastMessageId: null,
+          lastMessageCreatedAt: null,
+          deleteType: "For_Everypone",
+        });
+        return;
+      }
       const messages = await prisma.messages.findMany();
       const lastMessages = messages
         .filter(
           (msg) =>
             (msg.senderId === senderId && msg.receiverId === receiverId) ||
-            (msg.senderId === senderId && msg.receiverId === receiverId)
+            (msg.senderId === receiverId && msg.receiverId === senderId)
         )
         .filter((msg) => msg.deletedByMeId !== senderId)
         .sort(
           (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
-      await prisma.chatConversation.update({
-        where: {
-          lastMessageId: Number(messageId),
-        },
-        data:{
-          lastMessage:lastMessages.length>0?lastMessages
-        }
+      socket.emit("sidebar:update", {
+        lastMessage: lastMessages
+          ? lastMessages[0]?.text
+            ? lastMessages[0]?.text
+            : "This message was deleted"
+          : "No message yet",
+        sidebarChatId: chatConversation.id,
+        type: chatType,
+        lastMessageId: lastMessages
+          ? lastMessages[0]?.id
+          : "This message was deleted",
+        lastMessageCreatedAt: lastMessages ? lastMessages[0]?.createdAt : null,
+        deleteType: "For_Me",
       });
     }
   );

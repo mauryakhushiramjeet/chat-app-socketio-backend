@@ -193,7 +193,6 @@ export const addMessage = async (req: Request, res: Response) => {
 // };
 export const getGroupMessages = async (req: Request, res: Response) => {
   const { groupId } = req.query;
-  console.log(groupId, "sdfkjkjsh group id");
   if (!groupId) {
     return res.status(400).json({
       success: false,
@@ -218,13 +217,48 @@ export const getGroupMessages = async (req: Request, res: Response) => {
             image: true,
           },
         },
+        // group: {
+        //   include: {
+        //     groupMembers: {
+        //       include: {
+        //         user: {
+        //           select: {
+        //             id: true,
+        //             name: true,
+        //             image: true,
+        //           },
+        //         },
+        //       },
+        //     },
+        //   },
+        // },
       },
     });
-
+    const memebers = await prisma.group.findUnique({
+      where: {
+        id: Number(groupId),
+      },
+      select: {
+        groupMembers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    const users = memebers?.groupMembers.map((memebers) => memebers.user);
+    // console.log(users);
     return res.status(200).json({
       success: true,
       message: "Messages fetched successfully",
       messages,
+      users,
     });
   } catch (error) {
     console.log(error);
