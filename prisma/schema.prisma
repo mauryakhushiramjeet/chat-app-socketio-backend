@@ -90,3 +90,4 @@ model GroupMessage {
   group         Group    @relation(fields: [groupId], references: [id])
   createdAt     DateTime @default(now())
 }
+  

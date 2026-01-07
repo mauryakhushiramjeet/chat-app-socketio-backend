@@ -73,7 +73,6 @@ export const sidebarChatList = async (req: Request, res: Response) => {
       return chatConversation;
     });
 
-    // console.log("conversation chat ", updatedConversation);
     const formatedChatConversation = updatedConversation.map((conversation) => {
       const isLoggedUserIschatUser =
         conversation.chatUser?.id === Number(loggedInUserId);
@@ -109,8 +108,11 @@ export const sidebarChatList = async (req: Request, res: Response) => {
       include: {
         messages: {
           select: {
+            id: true,
             text: true,
             createdAt: true,
+            deletedByMeId: true,
+            deletedForAll: true,
           },
           orderBy: {
             createdAt: "desc",
@@ -119,9 +121,36 @@ export const sidebarChatList = async (req: Request, res: Response) => {
         },
       },
     });
+
+    const updatedGroupConversation = groupConversation.map((group) => {
+      const messages = group.messages.map((msg) => msg);
+      console.log("group messages", messages);
+      const lastMessage = messages[0];
+      if (lastMessage?.deletedForAll) {
+        return {
+          ...groupConversation,
+          lastMessage: "This message was deleted",
+          lastMessageId: lastMessage?.id,
+        };
+      }
+      if (lastMessage?.deletedByMeId === Number(loggedInUserId)) {
+        const previousMessages = messages
+          .filter((msg) => msg.deletedByMeId !== Number(loggedInUserId))
+          .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+          .at(-1);
+        return {
+          ...conversations,
+          lastMessage: previousMessages
+            ? previousMessages?.text
+            : "Start conversation",
+          lastMessageId: previousMessages ? previousMessages?.id : null,
+        };
+      }
+    });
     const formatedGroupConversation = groupConversation.map((group) => {
       const lastMessage = group?.messages[0]?.text ?? "";
       const lastMessageCreatedAt = group?.messages[0]?.createdAt ?? null;
+      const lastMessageId = group?.messages[0]?.id ?? null;
 
       return {
         id: group.id,
@@ -129,13 +158,16 @@ export const sidebarChatList = async (req: Request, res: Response) => {
         type: "group",
         groupImage: group?.image ?? null,
         lastMessage,
+        lastMessageId,
         lastMessageCreatedAt,
       };
     });
+
     const sidebarchatsAndGroupConverstions = [
       ...formatedChatConversation,
       ...formatedGroupConversation,
     ];
+
     return res.status(200).json({
       success: true,
       message: "get all the all sidebar conversation successfully",
