@@ -59,7 +59,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
           : null;
         return {
           ...chatConversation,
-          lastMessage: newLastMessage ? newLastMessage?.text : "Tab to chat",
+          lastMessage: newLastMessage ? newLastMessage?.text : "admnabkh",
           lastMessageId: newLastMessage ? newLastMessage.id : null,
         };
       }
@@ -117,52 +117,96 @@ export const sidebarChatList = async (req: Request, res: Response) => {
           orderBy: {
             createdAt: "desc",
           },
-          take: 1,
         },
       },
     });
 
-    const updatedGroupConversation = groupConversation.map((group) => {
-      const messages = group.messages.map((msg) => msg);
-      console.log("group messages", messages);
+    // const yuyu = groupConversation.map((group) => {
+    //   const messages = group.messages.map((msg) => msg);
+    //   // console.log("group messages", messages);
+    //   const lastMessage = messages[0];
+    //   if (lastMessage?.deletedForAll) {
+    //     return {
+    //       // ...groupConversation,
+    //       id: group.id,
+    //       name: group.name,
+    //       type: "group",
+    //       groupImage: group?.image ?? null,
+    //       lastMessage: "This message was deleted",
+    //       lastMessageId: lastMessage?.id,
+    //       lastMessageCreatedAt: lastMessage.createdAt ?? null,
+    //     };
+    //   }
+    //   if (lastMessage?.deletedByMeId === Number(loggedInUserId)) {
+    //     const previousMessages = messages
+    //       .filter((msg) => msg.deletedByMeId !== Number(loggedInUserId))
+    //       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    //       .at(-1);
+    //     return {
+    //       id: group.id,
+    //       name: group.name,
+    //       type: "group",
+    //       groupImage: group?.image ?? null,
+    //       lastMessage: previousMessages
+    //         ? previousMessages?.text
+    //         : "Start conversation",
+    //       lastMessageId: previousMessages ? previousMessages?.id : null,
+    //       lastMessageCreatedAt: lastMessage.createdAt ?? null,
+    //     };
+    //   }
+    // });
+
+    const formatedGroupConversation = groupConversation.map((group) => {
+      const messages = group.messages;
       const lastMessage = messages[0];
+
+      // console.log("messsages", messages);
       if (lastMessage?.deletedForAll) {
         return {
-          ...groupConversation,
+          id: group.id,
+          name: group.name,
+          type: "group",
+          groupImage: group.image ?? null,
           lastMessage: "This message was deleted",
-          lastMessageId: lastMessage?.id,
+          lastMessageId: null,
+          lastMessageCreatedAt: lastMessage.createdAt ?? null,
         };
       }
+
+      // Case 2: Deleted only for me
       if (lastMessage?.deletedByMeId === Number(loggedInUserId)) {
-        const previousMessages = messages
+        const previousMessage = messages
           .filter((msg) => msg.deletedByMeId !== Number(loggedInUserId))
           .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
           .at(-1);
         return {
-          ...conversations,
-          lastMessage: previousMessages
-            ? previousMessages?.text
+          id: group.id,
+          name: group.name,
+          type: "group",
+          groupImage: group.image ?? null,
+          lastMessage: previousMessage
+            ? previousMessage.text
+              ? previousMessage.text
+              : "This message was deleted"
             : "Start conversation",
-          lastMessageId: previousMessages ? previousMessages?.id : null,
+          lastMessageId: previousMessage?.id ?? null,
+          lastMessageCreatedAt: previousMessage?.createdAt ?? null,
         };
       }
-    });
-    const formatedGroupConversation = groupConversation.map((group) => {
-      const lastMessage = group?.messages[0]?.text ?? "";
-      const lastMessageCreatedAt = group?.messages[0]?.createdAt ?? null;
-      const lastMessageId = group?.messages[0]?.id ?? null;
 
+      // Case 3: Normal message
       return {
         id: group.id,
         name: group.name,
         type: "group",
-        groupImage: group?.image ?? null,
-        lastMessage,
-        lastMessageId,
-        lastMessageCreatedAt,
+        groupImage: group.image ?? null,
+        lastMessage: lastMessage?.text ?? "Start conversation",
+        lastMessageId: lastMessage?.id ?? null,
+        lastMessageCreatedAt: lastMessage?.createdAt ?? null,
       };
     });
 
+    // console.log(formatedGroupConversation, "group");
     const sidebarchatsAndGroupConverstions = [
       ...formatedChatConversation,
       ...formatedGroupConversation,

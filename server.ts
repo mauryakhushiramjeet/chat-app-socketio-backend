@@ -191,7 +191,7 @@ io.on("connection", (socket) => {
           io.to(String(socketId)).emit("receiveGropMessage", {
             groupId: `group-${groupId}`,
             message,
-            messageId: createMessage?.id,
+            lastMessageId: createMessage?.id,
             sender: createMessage?.sender,
           });
         });
@@ -224,6 +224,7 @@ io.on("connection", (socket) => {
   socket.on(
     "message:delete",
     async ({ messageId, senderId, receiverId, type, chatType }) => {
+      console.log("get this delete signal at server");
       try {
         if (!messageId || !senderId) {
           socket.emit("message:error", {
@@ -374,8 +375,77 @@ io.on("connection", (socket) => {
         "messageId",
         messageId
       );
-      if (chatType === "group") return;
-
+      const senderSocketId = onlineUsers[senderId];
+      const receiverSocketId = onlineUsers[receiverId];
+      if (chatType === "group") {
+        const groupConversation = await prisma.group.findUnique({
+          where: { id: Number(chatListId) },
+          include: {
+            messages: {
+              select: {
+                id: true,
+                text: true,
+                deletedByMeId: true,
+                deletedForAll: true,
+                createdAt: true,
+              },
+            },
+            groupMembers: {
+              select: {
+                userId: true,
+              },
+            },
+          },
+        });
+        const lastMessage = groupConversation?.messages.find(
+          (msg) => msg.id === messageId
+        );
+        if (lastMessage) {
+          if (lastMessage?.deletedForAll) {
+            // io.to(String(senderSocketId)).emit("sidebar:update", {
+            //   lastMessage: "This message was deleted",
+            //   sidebarChatId: groupConversation?.id,
+            //   type: "group",
+            //   lastMessageId: null,
+            //   lastMessageCreatedAt: new Date(),
+            //   deleteType: "For_Everypone",
+            // });
+            groupConversation?.groupMembers.forEach((member) => {
+              const socketId = onlineUsers[Number(member?.userId)];
+              console.log(socketId, member);
+              io.to(String(socketId)).emit("sidebar:update", {
+                lastMessage: "This message was deleted",
+                sidebarChatId: groupConversation?.id,
+                type: "group",
+                lastMessageId: lastMessage?.id ?? null,
+                lastMessageCreatedAt: new Date(),
+                deleteType: "For_Everypone",
+              });
+            });
+            console.log("send socket for delete for everryon , dleeteBy me");
+          }
+          if (lastMessage.deletedByMeId === Number(senderId)) {
+            const prevLastMessage = groupConversation?.messages
+              ?.filter((msg) => msg?.deletedByMeId !== Number(senderId))
+              .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+              .at(-1);
+            io.to(String(senderSocketId)).emit("sidebar:update", {
+              lastMessage: prevLastMessage
+                ? prevLastMessage.text
+                  ? prevLastMessage?.text
+                  : "This message was deleted"
+                : "No message yet",
+              sidebarChatId: groupConversation?.id,
+              type: "group",
+              lastMessageId: prevLastMessage?.id ?? null,
+              lastMessageCreatedAt: prevLastMessage?.createdAt ?? new Date(),
+              deleteType: "For_Me",
+            });
+            console.log("send socket for delete for me , dleeteBy me");
+          }
+        }
+        return;
+      }
       const chatConversation = await prisma.chatConversation.findUnique({
         where: { id: Number(chatListId) },
       });
@@ -395,8 +465,7 @@ io.on("connection", (socket) => {
           : `${receiverId}-${senderId}`;
       if (deleteMessage?.deletedForAll) {
         console.log(onlineUsers);
-        const senderSocketId = onlineUsers[senderId];
-        const receiverSocketId = onlineUsers[receiverId];
+
         console.log(senderSocketId, receiverSocketId);
 
         io.to(String(senderSocketId)).emit("sidebar:update", {
