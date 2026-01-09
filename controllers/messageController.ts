@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma";
 import type { Request, Response } from "express";
+import { io, onlineUsers } from "../server";
 
 export const getMessages = async (req: Request, res: Response) => {
   const { senderId, receiverId } = req.query; // <-- use query
@@ -259,6 +260,147 @@ export const getGroupMessages = async (req: Request, res: Response) => {
       message: "Messages fetched successfully",
       messages,
       users,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error,
+    });
+  }
+};
+
+export const sendMessage = async (req: Request, res: Response) => {
+  const files = req.files as Express.Multer.File[];
+  const { clientMessageId, text, senderId, receiverId, type } = req.body;
+  try {
+    if (!senderId || !receiverId) {
+      return res.status(400).json({
+        success: false,
+        message: "senderId and receiverId are required",
+      });
+    }
+    if (!text) {
+      return res.status(400).json({
+        success: false,
+        message: "Message is required",
+      });
+    }
+    const validateUsers = await prisma.user.findMany({
+      where: {
+        id: {
+          in: [Number(receiverId), Number(senderId)],
+        },
+      },
+    });
+    if (validateUsers.length !== 2) {
+      return res.status(400).json({
+        success: false,
+        message: "Sender or Receiver does not exist",
+      });
+    }
+    const message = await prisma.messages.create({
+      data: {
+        text: text,
+        senderId: senderId,
+        receiverId: receiverId,
+        status: "Send",
+      },
+    });
+    const response = message;
+    if (!files || files?.length == 0) return;
+    const createdFile = await Promise.all(
+      files.map((file) =>
+        prisma.file.create({
+          data: {
+            messageId: message?.id,
+            fileName: file.originalname,
+            filePath: file.path,
+            fileType: file.mimetype,
+          },
+        })
+      )
+    );
+
+    io.to(String(onlineUsers[senderId])).emit("status:send", {
+      clientMessageId,
+    });
+    let conversationId = null;
+    const conversation = await prisma.chatConversation.findFirst({
+      where: {
+        OR: [
+          { chatUserId: receiverId, currentUserId: senderId },
+          { chatUserId: senderId, currentUserId: receiverId },
+        ],
+      },
+      include: {
+        chatUser: true,
+      },
+    });
+    if (conversation) {
+      await prisma.chatConversation.update({
+        where: { id: conversation?.id },
+        data: {
+          lastMessage: text,
+          lastMessageCreatedAt: new Date(),
+          lastMessageId: response?.id,
+        },
+      });
+      conversationId = conversation;
+    }
+    if (!conversation) {
+      const createdConversation = await prisma.chatConversation.create({
+        data: {
+          currentUserId: senderId,
+          chatUserId: receiverId,
+          lastMessage: text,
+          lastMessageId: response?.id,
+          lastMessageCreatedAt: new Date(),
+        },
+        include: {
+          chatUser: true,
+          currentUser: true,
+        },
+      });
+      conversationId = createdConversation;
+    }
+    const senderSocketId = onlineUsers[senderId];
+    const receiverSocketId = onlineUsers[receiverId];
+    const senderConversation = {
+      ...conversationId,
+      chatUser: conversationId?.chatUser,
+      currentUser: conversationId?.currentUser,
+    };
+    const receiverConversation = {
+      ...conversationId,
+      chatUser: conversationId?.currentUser, // sender
+      currentUser: conversationId?.chatUser, // receiver
+    };
+    io.to(String(senderSocketId)).emit("newMessage", {
+      clientMessageId,
+      response,
+      lastMessageId: response?.id,
+      conversationId: senderConversation,
+      targetChatUserId: receiverId,
+      files: createdFile,
+      type,
+    });
+
+    io.to(String(receiverSocketId)).emit("newMessage", {
+      clientMessageId,
+      response,
+      lastMessageId: response?.id,
+      conversationId: receiverConversation,
+      targetChatUserId: senderId,
+      files: createdFile,
+      type,
+    });
+    return res.status(201).json({
+      success: true,
+      message: "message sended successfully",
+      messages: message,
+      files: createdFile,
     });
   } catch (error) {
     console.log(error);

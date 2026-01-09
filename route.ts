@@ -8,7 +8,13 @@ import {
   updateProfile,
 } from "./controllers/userController";
 import upload from "./lib/cloudinary";
-import { addMessage, getAllMyMessages, getGroupMessages, getMessages } from "./controllers/messageController";
+import {
+  addMessage,
+  getAllMyMessages,
+  getGroupMessages,
+  getMessages,
+  sendMessage,
+} from "./controllers/messageController";
 import { createGroup } from "./controllers/groupController";
 import { sidebarChatList } from "./controllers/sidebarController";
 
@@ -19,12 +25,13 @@ router.post("/login", login);
 
 router.get("/getFriends/:id", getAllFriends);
 router.get("/logedInUser/:id", getCurrentUser);
-router.post("/addMessage", addMessage);
+// router.post("/addMessage", addMessage);
+router.post("/addMessage", upload.array("file"), sendMessage);
 router.get("/getMessages", getMessages);
 router.get("/userConversations", getAllConverSationUsers);
-router.get("/getAllMyMessages",getAllMyMessages)
-router.put("/updateProfile",upload.single("image"),updateProfile)
-router.post("/createGroup",upload.single('image'),createGroup)
-router.get("/getSidebarChatList",sidebarChatList)
-router.get("/getGroupMessages",getGroupMessages)
+router.get("/getAllMyMessages", getAllMyMessages);
+router.put("/updateProfile", upload.single("image"), updateProfile);
+router.post("/createGroup", upload.single("image"), createGroup);
+router.get("/getSidebarChatList", sidebarChatList);
+router.get("/getGroupMessages", getGroupMessages);
 export default router;

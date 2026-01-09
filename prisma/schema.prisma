@@ -47,6 +47,7 @@ model Messages {
   deletedByMeId Int?
   status        String   @default("Pending")
   deletedForAll Boolean  @default(false)
+  file          File[]
   createdAt     DateTime @default(now())
 }
 
@@ -67,7 +68,8 @@ model Group {
   image        String?
   groupMembers GroupMembers[]
   messages     GroupMessage[]
-  createdAt    DateTime       @default(now())
+
+  createdAt DateTime @default(now())
 }
 
 model GroupMembers {
@@ -86,8 +88,20 @@ model GroupMessage {
   userId        Int
   deletedByMeId Int?
   deletedForAll Boolean  @default(false)
+  file          File[]
   sender        User     @relation(fields: [userId], references: [id])
   group         Group    @relation(fields: [groupId], references: [id])
   createdAt     DateTime @default(now())
 }
-  
+
+model File {
+  id             Int          @id @default(autoincrement())
+  fileName       String
+  fileType       String
+  filePath       String
+  messageId      Int?
+  groupMessageId Int?
+  groupMessage   GroupMessage? @relation(fields: [groupMessageId], references: [id])
+  message        Messages?     @relation(fields: [messageId], references: [id])
+  createdAt      DateTime     @default(now())
+}

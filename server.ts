@@ -72,75 +72,7 @@ io.on("connection", (socket) => {
         text,
       });
       const response = addMessage.data.messages;
-      socket.emit("status:send", { clientMessageId });
-      let conversationId = null;
-      const conversation = await prisma.chatConversation.findFirst({
-        where: {
-          OR: [
-            { chatUserId: receiverId, currentUserId: senderId },
-            { chatUserId: senderId, currentUserId: receiverId },
-          ],
-        },
-        include: {
-          chatUser: true,
-        },
-      });
-      if (conversation) {
-        await prisma.chatConversation.update({
-          where: { id: conversation?.id },
-          data: {
-            lastMessage: text,
-            lastMessageCreatedAt: new Date(),
-            lastMessageId: response?.id,
-          },
-        });
-        conversationId = conversation;
-      }
-      if (!conversation) {
-        const createdConversation = await prisma.chatConversation.create({
-          data: {
-            currentUserId: senderId,
-            chatUserId: receiverId,
-            lastMessage: text,
-            lastMessageId: response?.id,
-            lastMessageCreatedAt: new Date(),
-          },
-          include: {
-            chatUser: true,
-            currentUser: true,
-          },
-        });
-        conversationId = createdConversation;
-      }
-      const senderSocketId = onlineUsers[senderId];
-      const receiverSocketId = onlineUsers[receiverId];
-      const senderConversation = {
-        ...conversationId,
-        chatUser: conversationId?.chatUser,
-        currentUser: conversationId?.currentUser,
-      };
-      const receiverConversation = {
-        ...conversationId,
-        chatUser: conversationId?.currentUser, // sender
-        currentUser: conversationId?.chatUser, // receiver
-      };
-      io.to(String(senderSocketId)).emit("newMessage", {
-        clientMessageId,
-        response,
-        lastMessageId: response?.id,
-        conversationId: senderConversation,
-        targetChatUserId: receiverId,
-        type,
-      });
-
-      io.to(String(receiverSocketId)).emit("newMessage", {
-        clientMessageId,
-        response,
-        lastMessageId: response?.id,
-        conversationId: receiverConversation,
-        targetChatUserId: senderId,
-        type,
-      });
+      
     }
   );
   socket.on(
