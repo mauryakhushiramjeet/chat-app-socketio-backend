@@ -10,8 +10,17 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
+    console.log(file, "this is file");
+    let resourceType = "raw";
+
+    if (file.mimetype.startsWith("image/")) {
+      resourceType = "image";
+    } else if (file.mimetype.startsWith("video/")) {
+      resourceType = "video";
+    }
     return {
       folder: "chat-app",
+      resource_type: resourceType,
     };
   },
 });

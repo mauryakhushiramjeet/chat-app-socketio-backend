@@ -13,6 +13,7 @@ import {
   getAllMyMessages,
   getGroupMessages,
   getMessages,
+  sendGroupMessage,
   sendMessage,
 } from "./controllers/messageController";
 import { createGroup } from "./controllers/groupController";
@@ -27,6 +28,7 @@ router.get("/getFriends/:id", getAllFriends);
 router.get("/logedInUser/:id", getCurrentUser);
 // router.post("/addMessage", addMessage);
 router.post("/addMessage", upload.array("file"), sendMessage);
+router.post("/addGroupMessage", upload.array("file"),sendGroupMessage);
 router.get("/getMessages", getMessages);
 router.get("/userConversations", getAllConverSationUsers);
 router.get("/getAllMyMessages", getAllMyMessages);

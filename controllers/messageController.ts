@@ -21,6 +21,16 @@ export const getMessages = async (req: Request, res: Response) => {
           { senderId: Number(receiverId), receiverId: Number(senderId) },
         ],
       },
+      include: {
+        file: {
+          select: {
+            fileName: true,
+            filePath: true,
+            fileType: true,
+            id: true,
+          },
+        },
+      },
       orderBy: {
         createdAt: "asc",
       },
@@ -40,6 +50,16 @@ export const getAllMyMessages = async (req: Request, res: Response) => {
     if (!receiverId) return;
     const messages = await prisma.messages.findMany({
       where: { receiverId: Number(receiverId), status: "Send" },
+      include: {
+        file: {
+          select: {
+            filePath: true,
+            fileName: true,
+            fileType: true,
+            id: true,
+          },
+        },
+      },
     });
     if (messages.length === 0) {
       return res.status(200).json({
@@ -218,6 +238,14 @@ export const getGroupMessages = async (req: Request, res: Response) => {
             image: true,
           },
         },
+        file: {
+          select: {
+            fileName: true,
+            filePath: true,
+            fileType: true,
+            id: true,
+          },
+        },
         // group: {
         //   include: {
         //     groupMembers: {
@@ -275,16 +303,17 @@ export const sendMessage = async (req: Request, res: Response) => {
   const files = req.files as Express.Multer.File[];
   const { clientMessageId, text, senderId, receiverId, type } = req.body;
   try {
+    console.log(clientMessageId, text, senderId, receiverId, type, "fghfg");
     if (!senderId || !receiverId) {
       return res.status(400).json({
         success: false,
         message: "senderId and receiverId are required",
       });
     }
-    if (!text) {
+    if (!text && files.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Message is required",
+        message: "message or file is required.",
       });
     }
     const validateUsers = await prisma.user.findMany({
@@ -300,28 +329,32 @@ export const sendMessage = async (req: Request, res: Response) => {
         message: "Sender or Receiver does not exist",
       });
     }
+
     const message = await prisma.messages.create({
       data: {
         text: text,
-        senderId: senderId,
-        receiverId: receiverId,
+        senderId: Number(senderId),
+        receiverId: Number(receiverId),
         status: "Send",
       },
     });
     const response = message;
-    if (!files || files?.length == 0) return;
-    const createdFile = await Promise.all(
-      files.map((file) =>
-        prisma.file.create({
-          data: {
-            messageId: message?.id,
-            fileName: file.originalname,
-            filePath: file.path,
-            fileType: file.mimetype,
-          },
-        })
-      )
-    );
+    let reponseFiles = null;
+    if (files || files?.length > 0) {
+      const createdFile = await Promise.all(
+        files.map((file) =>
+          prisma.file.create({
+            data: {
+              messageId: message?.id,
+              fileName: file.originalname,
+              filePath: file.path,
+              fileType: file.mimetype,
+            },
+          })
+        )
+      );
+      reponseFiles = createdFile;
+    }
 
     io.to(String(onlineUsers[senderId])).emit("status:send", {
       clientMessageId,
@@ -330,19 +363,20 @@ export const sendMessage = async (req: Request, res: Response) => {
     const conversation = await prisma.chatConversation.findFirst({
       where: {
         OR: [
-          { chatUserId: receiverId, currentUserId: senderId },
-          { chatUserId: senderId, currentUserId: receiverId },
+          { chatUserId: Number(receiverId), currentUserId: Number(senderId) },
+          { chatUserId: Number(senderId), currentUserId: Number(receiverId) },
         ],
       },
       include: {
         chatUser: true,
       },
     });
+
     if (conversation) {
       await prisma.chatConversation.update({
-        where: { id: conversation?.id },
+        where: { id: Number(conversation?.id) },
         data: {
-          lastMessage: text,
+          lastMessage: text.trim() !== "" ? text : "Send a file",
           lastMessageCreatedAt: new Date(),
           lastMessageId: response?.id,
         },
@@ -352,9 +386,9 @@ export const sendMessage = async (req: Request, res: Response) => {
     if (!conversation) {
       const createdConversation = await prisma.chatConversation.create({
         data: {
-          currentUserId: senderId,
-          chatUserId: receiverId,
-          lastMessage: text,
+          currentUserId: Number(senderId),
+          chatUserId: Number(receiverId),
+          lastMessage: text.trim() !== "" ? text : "Send a file",
           lastMessageId: response?.id,
           lastMessageCreatedAt: new Date(),
         },
@@ -383,7 +417,7 @@ export const sendMessage = async (req: Request, res: Response) => {
       lastMessageId: response?.id,
       conversationId: senderConversation,
       targetChatUserId: receiverId,
-      files: createdFile,
+      files: reponseFiles,
       type,
     });
 
@@ -393,14 +427,109 @@ export const sendMessage = async (req: Request, res: Response) => {
       lastMessageId: response?.id,
       conversationId: receiverConversation,
       targetChatUserId: senderId,
-      files: createdFile,
+      files: reponseFiles,
       type,
     });
     return res.status(201).json({
       success: true,
       message: "message sended successfully",
       messages: message,
-      files: createdFile,
+      files: reponseFiles,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error,
+    });
+  }
+};
+export const sendGroupMessage = async (req: Request, res: Response) => {
+  const files = req.files as Express.Multer.File[];
+  const { groupId, message, messageSenderId } = req.body;
+  try {
+    if (message.trim() === "" && files?.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "senderId and receiverId are required",
+      });
+    }
+    const group = await prisma.group.findUnique({
+      where: {
+        id: Number(groupId),
+      },
+      select: {
+        groupMembers: {
+          select: {
+            userId: true,
+          },
+        },
+      },
+    });
+    if (!group) {
+      return res.status(400).json({
+        success: false,
+        message: "This group is not available",
+      });
+    }
+    const isMember = group.groupMembers.some(
+      (user) => String(user.userId) === String(messageSenderId)
+    );
+    if (!isMember) {
+      return res.status(400).json({
+        success: false,
+        message: "Only group joined user can send data",
+      });
+    }
+    const createMessage = await prisma.groupMessage.create({
+      data: {
+        text: message,
+        createdAt: new Date(),
+        groupId: Number(groupId),
+        userId: Number(messageSenderId),
+      },
+      include: {
+        sender: {
+          select: {
+            name: true,
+            image: true,
+            id: true,
+          },
+        },
+      },
+    });
+    let reponseFiles = null;
+    if (files || files?.length > 0) {
+      const createdFile = await Promise.all(
+        files.map((file) =>
+          prisma.file.create({
+            data: {
+              groupMessageId: createMessage?.id,
+              fileName: file.originalname,
+              filePath: file.path,
+              fileType: file.mimetype,
+            },
+          })
+        )
+      );
+      reponseFiles = createdFile;
+    }
+    group.groupMembers.map((user) => {
+      const socketId = onlineUsers[user?.userId];
+      io.to(String(socketId)).emit("receiveGropMessage", {
+        groupId: `group-${groupId}`,
+        message,
+        lastMessageId: createMessage?.id,
+        sender: createMessage?.sender,
+        file: reponseFiles,
+      });
+    });
+    return res.status(201).json({
+      success: true,
+      message: "message sended successfully",
+      messages: createMessage,
+      files: reponseFiles,
     });
   } catch (error) {
     console.log(error);
