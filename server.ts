@@ -415,7 +415,7 @@ io.on("connection", (socket) => {
   });
   socket.on(
     "editMessage",
-    async ({ messageId, senderId, newText, receiverId, type }) => {
+    async ({ messageId, senderId, newText, receiverId, type,file }) => {
       try {
         if (!messageId || !senderId || !newText) {
           return socket.emit("message:error", {
@@ -433,6 +433,9 @@ io.on("connection", (socket) => {
             where: { id: messageId },
             data: { text: newText },
           });
+          if(file?.length>0){
+           
+          }
 
           const roomId =
             senderId < receiverId

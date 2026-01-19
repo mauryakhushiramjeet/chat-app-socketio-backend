@@ -38,17 +38,18 @@ enum Status {
 }
 
 model Messages {
-  id            Int      @id @default(autoincrement())
-  text          String?
-  sender        User     @relation("setMessage", fields: [senderId], references: [id])
-  receiver      User     @relation("recievMessage", fields: [receiverId], references: [id])
-  senderId      Int
-  receiverId    Int
-  deletedByMeId Int?
-  status        String   @default("Pending")
-  deletedForAll Boolean  @default(false)
-  file          File[]
-  createdAt     DateTime @default(now())
+  id               Int      @id @default(autoincrement())
+  text             String?
+  sender           User     @relation("setMessage", fields: [senderId], references: [id])
+  receiver         User     @relation("recievMessage", fields: [receiverId], references: [id])
+  senderId         Int
+  receiverId       Int
+  deletedByMeId    Int?
+  replyToMessageId Int?
+  status           String   @default("Pending")
+  deletedForAll    Boolean  @default(false)
+  file             File[]
+  createdAt        DateTime @default(now())
 }
 
 model ChatConversation {
@@ -82,26 +83,29 @@ model GroupMembers {
 }
 
 model GroupMessage {
-  id            Int      @id @default(autoincrement())
-  text          String?
-  groupId       Int
-  userId        Int
-  deletedByMeId Int?
-  deletedForAll Boolean  @default(false)
-  file          File[]
-  sender        User     @relation(fields: [userId], references: [id])
-  group         Group    @relation(fields: [groupId], references: [id])
-  createdAt     DateTime @default(now())
+  id               Int      @id @default(autoincrement())
+  text             String?
+  groupId          Int
+  userId           Int
+  deletedByMeId    Int?
+  deletedForAll    Boolean  @default(false)
+  replyToMessageId Int?
+  file             File[]
+  sender           User     @relation(fields: [userId], references: [id])
+  group            Group    @relation(fields: [groupId], references: [id])
+  createdAt        DateTime @default(now())
 }
 
 model File {
-  id             Int          @id @default(autoincrement())
+  id             Int           @id @default(autoincrement())
   fileName       String
   fileType       String
   filePath       String
   messageId      Int?
   groupMessageId Int?
+  isDeleted      Boolean       @default(false)
   groupMessage   GroupMessage? @relation(fields: [groupMessageId], references: [id])
   message        Messages?     @relation(fields: [messageId], references: [id])
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime      @default(now())
 }
+// added new colom in file for file deletion which is isDeleted

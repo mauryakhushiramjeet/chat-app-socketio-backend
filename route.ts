@@ -9,7 +9,8 @@ import {
 } from "./controllers/userController";
 import upload from "./lib/cloudinary";
 import {
-  addMessage,
+  editMessageFile,
+  // addMessage,
   getAllMyMessages,
   getGroupMessages,
   getMessages,
@@ -28,7 +29,7 @@ router.get("/getFriends/:id", getAllFriends);
 router.get("/logedInUser/:id", getCurrentUser);
 // router.post("/addMessage", addMessage);
 router.post("/addMessage", upload.array("file"), sendMessage);
-router.post("/addGroupMessage", upload.array("file"),sendGroupMessage);
+router.post("/addGroupMessage", upload.array("file"), sendGroupMessage);
 router.get("/getMessages", getMessages);
 router.get("/userConversations", getAllConverSationUsers);
 router.get("/getAllMyMessages", getAllMyMessages);
@@ -36,4 +37,5 @@ router.put("/updateProfile", upload.single("image"), updateProfile);
 router.post("/createGroup", upload.single("image"), createGroup);
 router.get("/getSidebarChatList", sidebarChatList);
 router.get("/getGroupMessages", getGroupMessages);
+router.put("/updateMessageFile", upload.array("file"), editMessageFile);
 export default router;
