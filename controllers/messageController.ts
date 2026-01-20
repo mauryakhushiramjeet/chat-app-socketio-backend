@@ -23,11 +23,13 @@ export const getMessages = async (req: Request, res: Response) => {
       },
       include: {
         file: {
+          where: { isDeleted: false },
           select: {
             fileName: true,
             filePath: true,
             fileType: true,
             id: true,
+            isDeleted: true,
           },
         },
       },
@@ -39,7 +41,7 @@ export const getMessages = async (req: Request, res: Response) => {
     const messages = message.map((msg) => {
       if (msg?.replyToMessageId) {
         const replyMessages = message.find(
-          (message) => message?.id === msg?.replyToMessageId
+          (message) => message?.id === msg?.replyToMessageId,
         );
         return {
           ...msg,
@@ -51,6 +53,7 @@ export const getMessages = async (req: Request, res: Response) => {
                 : null,
             createdAt: replyMessages?.createdAt,
             id: replyMessages?.id,
+            replyMessageSenderId: replyMessages?.replyMessageSenderId,
           },
         };
       } else {
@@ -260,11 +263,13 @@ export const getGroupMessages = async (req: Request, res: Response) => {
           },
         },
         file: {
+          where: { isDeleted: false },
           select: {
             fileName: true,
             filePath: true,
             fileType: true,
             id: true,
+            isDeleted: true,
           },
         },
       },
@@ -290,7 +295,7 @@ export const getGroupMessages = async (req: Request, res: Response) => {
 
     const messages = groupMessagesWithReplies.map((groupMsg) => {
       const replyMessages = groupMessagesWithReplies.find(
-        (message) => message?.id === groupMsg?.replyToMessageId
+        (message) => message?.id === groupMsg?.replyToMessageId,
       );
       if (groupMsg?.replyToMessageId) {
         return {
@@ -303,6 +308,7 @@ export const getGroupMessages = async (req: Request, res: Response) => {
                 : null,
             createdAt: replyMessages?.createdAt,
             id: replyMessages?.id,
+            replyMessageSenderId: replyMessages?.replyMessageSenderId,
           },
         };
       } else {
@@ -337,6 +343,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     receiverId,
     type,
     replyToMessageId,
+    replyMessageSenderId,
   } = req.body;
   try {
     console.log(clientMessageId, text, senderId, receiverId, type, "fghfg");
@@ -390,6 +397,7 @@ export const sendMessage = async (req: Request, res: Response) => {
         senderId: Number(senderId),
         receiverId: Number(receiverId),
         status: "Send",
+        replyMessageSenderId: Number(replyMessageSenderId),
         replyToMessageId: replyToMessageId ? Number(replyToMessageId) : null,
       },
     });
@@ -405,8 +413,8 @@ export const sendMessage = async (req: Request, res: Response) => {
               filePath: file.path,
               fileType: file.mimetype,
             },
-          })
-        )
+          }),
+        ),
       );
       reponseFiles = createdFile;
     }
@@ -482,6 +490,7 @@ export const sendMessage = async (req: Request, res: Response) => {
             ? replyMessage?.file
             : null,
         createdAt: replyMessage?.createdAt,
+        replyMessageSenderId: replyMessage?.replyMessageSenderId,
         id: replyMessage?.id,
       },
     });
@@ -501,6 +510,7 @@ export const sendMessage = async (req: Request, res: Response) => {
             : null,
         createdAt: replyMessage?.createdAt,
         id: replyMessage?.id,
+        replyMessageSenderId: replyMessage?.replyMessageSenderId,
       },
     });
     io.to(String(receiverSocketId)).emit("newMessage", {
@@ -519,6 +529,7 @@ export const sendMessage = async (req: Request, res: Response) => {
             : null,
         createdAt: replyMessage?.createdAt,
         id: replyMessage?.id,
+        replyMessageSenderId: replyMessage?.replyMessageSenderId,
       },
     });
     return res.status(201).json({
@@ -538,7 +549,13 @@ export const sendMessage = async (req: Request, res: Response) => {
 };
 export const sendGroupMessage = async (req: Request, res: Response) => {
   const files = req.files as Express.Multer.File[];
-  const { groupId, message, messageSenderId, replyToMessageId } = req.body;
+  const {
+    groupId,
+    message,
+    messageSenderId,
+    replyToMessageId,
+    replyMessageSenderId,
+  } = req.body;
   try {
     if (message.trim() === "" && files?.length === 0) {
       return res.status(400).json({
@@ -565,7 +582,7 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
       });
     }
     const isMember = group.groupMembers.some(
-      (user) => String(user.userId) === String(messageSenderId)
+      (user) => String(user.userId) === String(messageSenderId),
     );
     if (!isMember) {
       return res.status(400).json({
@@ -598,6 +615,7 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
         groupId: Number(groupId),
         userId: Number(messageSenderId),
         replyToMessageId: Number(replyToMessageId),
+        replyMessageSenderId: Number(replyMessageSenderId),
       },
       include: {
         sender: {
@@ -620,8 +638,8 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
               filePath: file.path,
               fileType: file.mimetype,
             },
-          })
-        )
+          }),
+        ),
       );
       reponseFiles = createdFile;
     }
@@ -641,6 +659,7 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
               : null,
           createdAt: replyMessage?.createdAt,
           id: replyMessage?.id,
+          replyMessageSenderId: replyMessage?.replyMessageSenderId,
         },
       });
     });
@@ -655,19 +674,38 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error,
+      ERROR: error.message,
     });
   }
 };
 export const editMessageFile = async (req: Request, res: Response) => {
-  const { messageId, senderId, newText, receiverId, type, deletedFileId } =
-    req.body;
-  const files = req?.files;
+  const {
+    messageId,
+    senderId,
+    newText,
+    receiverId,
+    type,
+    deletedFileId,
+    groupId,
+  } = req.body;
+  const files = req?.files as Express.Multer.File[];
   try {
-    if (!messageId || !senderId || !newText) {
+    console.log(
+      messageId,
+      senderId,
+      newText,
+      receiverId,
+      type,
+      deletedFileId,
+      groupId,
+      "new text",
+    );
+    if (!messageId || !senderId) {
       throw new Error("Required data missing");
     }
-
+    if (!newText && files.length == 0) {
+      throw new Error("Required data missing");
+    }
     if (type === "chat") {
       const message = await prisma.messages.findUnique({
         where: { id: Number(messageId) },
@@ -685,35 +723,130 @@ export const editMessageFile = async (req: Request, res: Response) => {
         where: { id: Number(messageId) },
         data: { text: newText },
       });
+      const deletedFiles = (
+        Array.isArray(deletedFileId) ? deletedFileId : [deletedFileId]
+      )
+        .map((id) => Number(id))
+        .filter((id) => !isNaN(id) && id > 0);
 
-      if (Array.isArray(deletedFileId) && deletedFileId.length > 0) {
+      console.log(deletedFiles, "final deleted ids");
+
+      if (deletedFiles.length > 0) {
         await Promise.all(
-          deletedFileId.map((id) =>
+          deletedFiles.map((id) =>
             prisma.file.update({
-              where: { id: Number(id) },
+              where: { id },
               data: { isDeleted: true },
-            })
-          )
+            }),
+          ),
         );
       }
+
       let createFiles = null;
       if (Array.isArray(files) && files.length > 0) {
+        console.log("run in deleted", deletedFileId);
         createFiles = await Promise.all(
-          files.map(
+          files?.map(
             async (f) =>
               await prisma.file.create({
                 data: {
-                  messageId: messageId,
                   fileName: f.originalname,
                   filePath: f.path,
                   fileType: f.mimetype,
+                  messageId: Number(messageId),
                 },
-              })
-          )
+              }),
+          ),
         );
       }
-      const allFile = await prisma.messages.findMany({
+
+      // Then fetch files AFTER deletion is guaranteed
+      const allFile = await prisma.file.findMany({
+        where: { messageId: Number(messageId), isDeleted: false },
+        select: {
+          id: true,
+          fileName: true,
+          filePath: true,
+          fileType: true,
+          messageId: true,
+          isDeleted: true,
+        },
+      });
+
+      const roomId =
+        senderId < receiverId
+          ? `${senderId}-${receiverId}`
+          : `${receiverId}-${senderId}`;
+
+      // const imagefile = allFile?.map((f) => f.isDeleted !== true);
+      console.log(allFile, "all files");
+      io.to(roomId).emit("editMessage", {
+        messageId,
+        newText,
+        files: allFile,
+        chatType: "chat",
+      });
+    }
+
+    if (type === "group") {
+      const message = await prisma.groupMessage.findUnique({
         where: { id: Number(messageId) },
+      });
+
+      if (!message) {
+        throw new Error("Message not found");
+      }
+
+      if (Number(message?.userId) !== Number(senderId)) {
+        throw new Error("Unauthorized edit");
+      }
+      console.log("files", files);
+      const groupMessage = await prisma.groupMessage.findUnique({
+        where: { id: Number(messageId) },
+      });
+      let createGroupFile = null;
+      console.log("group message sis", groupMessage);
+      if (files && files?.length !== 0) {
+        createGroupFile = await Promise.all(
+          files?.map(
+            async (f) =>
+              await prisma.file.create({
+                data: {
+                  fileName: f.originalname,
+                  filePath: f.path,
+                  fileType: f.mimetype,
+                  groupMessageId: Number(messageId),
+                },
+              }),
+          ),
+        );
+      }
+      console.log(createGroupFile, "created ");
+      const deletedFiles = (
+        Array.isArray(deletedFileId) ? deletedFileId : [deletedFileId]
+      )
+        .map((id) => Number(id))
+        .filter((id) => !isNaN(id) && id > 0);
+
+      console.log(deletedFiles, "final deleted ids");
+
+      if (deletedFiles.length > 0) {
+        await Promise.all(
+          deletedFiles.map((id) =>
+            prisma.file.update({
+              where: { id },
+              data: { isDeleted: true },
+            }),
+          ),
+        );
+      }
+
+      const groupChat = await prisma.groupMessage.update({
+        where: { id: Number(messageId) },
+        data: {
+          text: newText,
+        },
+
         include: {
           file: {
             where: {
@@ -726,38 +859,7 @@ export const editMessageFile = async (req: Request, res: Response) => {
               messageId: true,
             },
           },
-        },
-      });
-      const roomId =
-        senderId < receiverId
-          ? `${senderId}-${receiverId}`
-          : `${receiverId}-${senderId}`;
 
-      io.to(roomId).emit("editMessage", {
-        messageId,
-        newText,
-        files: allFile,
-        chatType: "chat",
-      });
-    }
-
-    if (type === "group") {
-      const message = await prisma.groupMessage.findUnique({
-        where: { id: messageId },
-      });
-
-      if (!message) {
-        throw new Error("Message not found");
-      }
-
-      if (message.userId !== senderId) {
-        throw new Error("Unauthorized edit");
-      }
-
-      const groupChat = await prisma.groupMessage.update({
-        where: { id: messageId },
-        data: { text: newText },
-        include: {
           group: {
             select: {
               groupMembers: true,
@@ -767,11 +869,13 @@ export const editMessageFile = async (req: Request, res: Response) => {
       });
 
       groupChat.group.groupMembers.forEach((user: any) => {
+        console.log("run");
         const socketId = onlineUsers[user.userId];
         if (socketId) {
           io.to(socketId).emit("editMessage", {
             messageId,
             newText,
+            files: groupChat?.file,
             chatType: "group",
           });
         }
