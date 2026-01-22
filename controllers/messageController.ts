@@ -134,54 +134,6 @@ export const getAllMyMessages = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: error });
   }
 };
-// export const addMessage = async (req: Request, res: Response) => {
-//   const { senderId, receiverId, text } = req.body;
-//   // console.log("text gated in api", text);
-//   try {
-//     if (!senderId || !receiverId) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "senderId and receiverId are required",
-//       });
-//     }
-//     if (!text) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Message is required",
-//       });
-//     }
-//     const validateUsers = await prisma.user.findMany({
-//       where: {
-//         id: {
-//           in: [receiverId, senderId],
-//         },
-//       },
-//     });
-//     if (validateUsers.length !== 2) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Sender or Receiver does not exist",
-//       });
-//     }
-//     const messages = await prisma.messages.create({
-//       data: {
-//         text: text,
-//         senderId,
-//         receiverId,
-//         status: "Send",
-//       },
-//     });
-//     // console.log(messages);
-
-//     return res.status(201).json({
-//       success: true,
-//       message: "message sended successfully",
-//       messages,
-//     });
-//   } catch (error) {
-//     return res.status(500).json({ success: false, message: error });
-//   }
-// };
 
 // export const deleteMessageForMe = async (req: Request, res: Response) => {
 //   const { messageId, senderId } = req.body;
@@ -270,105 +222,8 @@ export const getAllMyMessages = async (req: Request, res: Response) => {
 //     return res.status(500).json({ success: false, message: error });
 //   }
 // };
-export const getGroupMessages = async (req: Request, res: Response) => {
-  const { groupId } = req.query;
-  if (!groupId) {
-    return res.status(400).json({
-      success: false,
-      message: "Group ID is required",
-    });
-  }
-
-  try {
-    // Fetch messages with sender info
-    const groupMessagesWithReplies = await prisma.groupMessage.findMany({
-      where: {
-        groupId: Number(groupId),
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
-        file: {
-          where: { isDeleted: false },
-          select: {
-            fileName: true,
-            filePath: true,
-            fileType: true,
-            id: true,
-            isDeleted: true,
-          },
-        },
-      },
-    });
-    const memebers = await prisma.group.findUnique({
-      where: {
-        id: Number(groupId),
-      },
-      select: {
-        groupMembers: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                image: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    const messages = groupMessagesWithReplies.map((groupMsg) => {
-      const replyMessages = groupMessagesWithReplies.find(
-        (message) => message?.id === groupMsg?.replyToMessageId,
-      );
-      if (groupMsg?.replyToMessageId) {
-        return {
-          ...groupMsg,
-          replyMessage: {
-            text: replyMessages?.text,
-            file:
-              replyMessages?.file && replyMessages?.file?.length > 0
-                ? replyMessages?.file
-                : null,
-            createdAt: replyMessages?.createdAt,
-            id: replyMessages?.id,
-            // replyMessageSenderId: replyMessages?.replyMessageSenderId,
-          },
-        };
-      } else {
-        return groupMsg;
-      }
-    });
-
-    const users = memebers?.groupMembers.map((memebers) => memebers.user);
-    // console.log(users);
-    return res.status(200).json({
-      success: true,
-      message: "Messages fetched successfully",
-      messages,
-      users,
-    });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-      error,
-    });
-  }
-};
 // export const getGroupMessages = async (req: Request, res: Response) => {
-//   const { groupId, lastMessageId } = req.query;
+//   const { groupId,lastMessageId } = req.query;
 //   if (!groupId) {
 //     return res.status(400).json({
 //       success: false,
@@ -377,70 +232,34 @@ export const getGroupMessages = async (req: Request, res: Response) => {
 //   }
 
 //   try {
-//     let groupMessagesWithReplies = null;
 //     // Fetch messages with sender info
-//     if (lastMessageId) {
-//        groupMessagesWithReplies = await prisma.groupMessage.findMany({
-//         where: {
-//           groupId: Number(groupId),
-//         },
-//         orderBy: {
-//           createdAt: "desc",
-//         },
-//         include: {
-//           sender: {
-//             select: {
-//               id: true,
-//               name: true,
-//               image: true,
-//             },
-//           },
-//           file: {
-//             where: { isDeleted: false },
-//             select: {
-//               fileName: true,
-//               filePath: true,
-//               fileType: true,
-//               id: true,
-//               isDeleted: true,
-//             },
+//     const groupMessagesWithReplies = await prisma.groupMessage.findMany({
+//       where: {
+//         groupId: Number(groupId),
+//       },
+//       orderBy: {
+//         createdAt: "asc",
+//       },
+//       include: {
+//         sender: {
+//           select: {
+//             id: true,
+//             name: true,
+//             image: true,
 //           },
 //         },
-//         cursor: { id: Number(lastMessageId) },
-//         skip: 1,
-//         take: 10,
-//       });
-//     } else {
-//       groupMessagesWithReplies = await prisma.groupMessage.findMany({
-//         where: {
-//           groupId: Number(groupId),
-//         },
-//         orderBy: {
-//           createdAt: "desc",
-//         },
-//         include: {
-//           sender: {
-//             select: {
-//               id: true,
-//               name: true,
-//               image: true,
-//             },
-//           },
-//           file: {
-//             where: { isDeleted: false },
-//             select: {
-//               fileName: true,
-//               filePath: true,
-//               fileType: true,
-//               id: true,
-//               isDeleted: true,
-//             },
+//         file: {
+//           where: { isDeleted: false },
+//           select: {
+//             fileName: true,
+//             filePath: true,
+//             fileType: true,
+//             id: true,
+//             isDeleted: true,
 //           },
 //         },
-//         take: 10,
-//       });
-//     }
-
+//       },
+//     });
 //     const memebers = await prisma.group.findUnique({
 //       where: {
 //         id: Number(groupId),
@@ -500,6 +319,140 @@ export const getGroupMessages = async (req: Request, res: Response) => {
 //     });
 //   }
 // };
+export const getGroupMessages = async (req: Request, res: Response) => {
+  const { groupId, lastMessageId } = req.query;
+  if (!groupId) {
+    return res.status(400).json({
+      success: false,
+      message: "Group ID is required",
+    });
+  }
+
+  try {
+    let groupMessagesWithReplies = null;
+    // Fetch messages with sender info
+    if (lastMessageId) {
+      groupMessagesWithReplies = await prisma.groupMessage.findMany({
+        where: {
+          groupId: Number(groupId),
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          sender: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+          file: {
+            where: { isDeleted: false },
+            select: {
+              fileName: true,
+              filePath: true,
+              fileType: true,
+              id: true,
+              isDeleted: true,
+            },
+          },
+        },
+        cursor: { id: Number(lastMessageId) },
+        skip: 1,
+        take: 10,
+      });
+    } else {
+      groupMessagesWithReplies = await prisma.groupMessage.findMany({
+        where: {
+          groupId: Number(groupId),
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          sender: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+          file: {
+            where: { isDeleted: false },
+            select: {
+              fileName: true,
+              filePath: true,
+              fileType: true,
+              id: true,
+              isDeleted: true,
+            },
+          },
+        },
+        take: 10,
+      });
+    }
+
+    const memebers = await prisma.group.findUnique({
+      where: {
+        id: Number(groupId),
+      },
+      select: {
+        groupMembers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const messages = groupMessagesWithReplies.map((groupMsg) => {
+      const replyMessages = groupMessagesWithReplies.find(
+        (message) => message?.id === groupMsg?.replyToMessageId,
+      );
+      if (groupMsg?.replyToMessageId) {
+        return {
+          ...groupMsg,
+          replyMessage: {
+            text: replyMessages?.text,
+            file:
+              replyMessages?.file && replyMessages?.file?.length > 0
+                ? replyMessages?.file
+                : null,
+            createdAt: replyMessages?.createdAt,
+            id: replyMessages?.id,
+            // replyMessageSenderId: replyMessages?.replyMessageSenderId,
+          },
+        };
+      } else {
+        return groupMsg;
+      }
+    });
+
+    const users = memebers?.groupMembers.map((memebers) => memebers.user);
+    // console.log(users);
+    return res.status(200).json({
+      success: true,
+      message: "Messages fetched successfully",
+      messages,
+      users,
+      loadType: lastMessageId ? "PAGINATION" : "INITIAL",
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error,
+    });
+  }
+};
 export const sendMessage = async (req: Request, res: Response) => {
   const files = req.files as Express.Multer.File[];
   const {

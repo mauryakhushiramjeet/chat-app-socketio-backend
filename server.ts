@@ -72,14 +72,14 @@ io.on("connection", (socket) => {
   //       text,
   //     });
   //     const response = addMessage.data.messages;
-      
+
   //   }
   // );
   // socket.on(
   //   "sendGroupMessage",
   //   async ({ groupId, message, messageSenderId }) => {
   //     try {
-      
+
   //     } catch (error) {
   //       console.log(error);
   //     }
@@ -242,7 +242,7 @@ io.on("connection", (socket) => {
           message: error,
         });
       }
-    }
+    },
   );
   socket.on(
     "sidebar:update",
@@ -258,7 +258,7 @@ io.on("connection", (socket) => {
         "chatLostId",
         chatListId,
         "messageId",
-        messageId
+        messageId,
       );
       const senderSocketId = onlineUsers[senderId];
       const receiverSocketId = onlineUsers[receiverId];
@@ -283,7 +283,7 @@ io.on("connection", (socket) => {
           },
         });
         const lastMessage = groupConversation?.messages.find(
-          (msg) => msg.id === messageId
+          (msg) => msg.id === messageId,
         );
         if (lastMessage) {
           if (lastMessage?.deletedForAll) {
@@ -376,12 +376,12 @@ io.on("connection", (socket) => {
         .filter(
           (msg) =>
             (msg.senderId === senderId && msg.receiverId === receiverId) ||
-            (msg.senderId === receiverId && msg.receiverId === senderId)
+            (msg.senderId === receiverId && msg.receiverId === senderId),
         )
         .filter((msg) => msg.deletedByMeId !== senderId)
         .sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
       socket.emit("sidebar:update", {
         lastMessage: lastMessages
@@ -397,7 +397,7 @@ io.on("connection", (socket) => {
         lastMessageCreatedAt: lastMessages ? lastMessages[0]?.createdAt : null,
         deleteType: "For_Me",
       });
-    }
+    },
   );
   socket.on("status:Read", async ({ messageId }) => {
     const message = await prisma.messages.update({
@@ -415,7 +415,7 @@ io.on("connection", (socket) => {
   });
   socket.on(
     "editMessage",
-    async ({ messageId, senderId, newText, receiverId, type,file }) => {
+    async ({ messageId, senderId, newText, receiverId, type, file }) => {
       try {
         if (!messageId || !senderId || !newText) {
           return socket.emit("message:error", {
@@ -433,8 +433,7 @@ io.on("connection", (socket) => {
             where: { id: messageId },
             data: { text: newText },
           });
-          if(file?.length>0){
-           
+          if (file?.length > 0) {
           }
 
           const roomId =
@@ -484,7 +483,7 @@ io.on("connection", (socket) => {
           message: "Something went wrong while editing message",
         });
       }
-    }
+    },
   );
 
   socket.on("profile:update", async (data) => {
@@ -529,7 +528,7 @@ io.on("connection", (socket) => {
     if (!userId) return;
     console.log("socket disconnected:", socket.id);
     const disconnectedUserId = Object.keys(onlineUsers).find(
-      (id) => onlineUsers[id] === socket.id
+      (id) => onlineUsers[id] === socket.id,
     );
     if (disconnectedUserId) {
       delete onlineUsers[disconnectedUserId];
