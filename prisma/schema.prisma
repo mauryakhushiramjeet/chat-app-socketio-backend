@@ -112,3 +112,13 @@ model File {
 }
 
 // added new colom in group message and message which replymessagesenderId 
+model ChatClear {
+  id                Int      @unique @default(autoincrement())
+  userId            Int
+  chatPartnerUserId Int?
+  groupId           Int?
+  deletedAt         DateTime @default(now())
+
+  @@index([userId, chatPartnerUserId])
+  @@index([userId, groupId])
+}

@@ -399,6 +399,7 @@ io.on("connection", (socket) => {
       });
     },
   );
+
   socket.on("status:Read", async ({ messageId }) => {
     const message = await prisma.messages.update({
       where: { id: messageId },
@@ -413,78 +414,6 @@ io.on("connection", (socket) => {
       messageId,
     });
   });
-  socket.on(
-    "editMessage",
-    async ({ messageId, senderId, newText, receiverId, type, file }) => {
-      try {
-        if (!messageId || !senderId || !newText) {
-          return socket.emit("message:error", {
-            message: "Required data missing",
-          });
-        }
-
-        if (type === "chat") {
-          const message = await prisma.messages.findUnique({
-            where: { id: messageId },
-          });
-
-          if (!message || message.senderId !== senderId) return;
-          await prisma.messages.update({
-            where: { id: messageId },
-            data: { text: newText },
-          });
-          if (file?.length > 0) {
-          }
-
-          const roomId =
-            senderId < receiverId
-              ? `${senderId}-${receiverId}`
-              : `${receiverId}-${senderId}`;
-
-          io.to(roomId).emit("editMessage", {
-            messageId,
-            newText,
-            chatType: "chat",
-          });
-        }
-
-        if (type === "group") {
-          const message = await prisma.groupMessage.findUnique({
-            where: { id: messageId },
-          });
-
-          if (!message || message.userId !== senderId) return;
-
-          const groupChat = await prisma.groupMessage.update({
-            where: { id: messageId },
-            data: { text: newText },
-            include: {
-              group: {
-                select: {
-                  groupMembers: true,
-                },
-              },
-            },
-          });
-
-          groupChat?.group.groupMembers.forEach((user: any) => {
-            const socketId = onlineUsers[user.userId];
-            if (socketId) {
-              io.to(socketId).emit("editMessage", {
-                messageId,
-                newText,
-                chatType: "group",
-              });
-            }
-          });
-        }
-      } catch (error) {
-        socket.emit("message:error", {
-          message: "Something went wrong while editing message",
-        });
-      }
-    },
-  );
 
   socket.on("profile:update", async (data) => {
     try {
@@ -522,6 +451,10 @@ io.on("connection", (socket) => {
         message: error,
       });
     }
+  });
+  socket.on("clearChat", async (senderId, receiverId,type) => {
+    console.log("ids ", senderId, receiverId,type);
+const clearChat=await prisma.
   });
   socket.on("disconnect", async () => {
     const userId = socket.data.userId;

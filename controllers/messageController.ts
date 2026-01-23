@@ -789,7 +789,7 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
       messages: createMessage,
       files: reponseFiles,
     });
-  } catch (error) {
+  } catch (error:any) {
     console.log(error);
     return res.status(500).json({
       success: false,
@@ -807,6 +807,7 @@ export const editMessageFile = async (req: Request, res: Response) => {
     type,
     deletedFileId,
     groupId,
+    fileExist,
   } = req.body;
   const files = req?.files as Express.Multer.File[];
   try {
@@ -818,13 +819,15 @@ export const editMessageFile = async (req: Request, res: Response) => {
       type,
       deletedFileId,
       groupId,
+      fileExist,
       "new text",
     );
     if (!messageId || !senderId) {
       throw new Error("Required data missing");
     }
-    if (!newText && files.length == 0) {
-      throw new Error("Required data missing");
+    console.log(files);
+    if (!newText && files.length == 0 && !fileExist) {
+      throw new Error("Edited messages can't be empty");
     }
     if (type === "chat") {
       const message = await prisma.messages.findUnique({
