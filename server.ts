@@ -4,9 +4,8 @@ import router from "./route";
 import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
-import axios from "axios";
 import { prisma } from "./lib/prisma";
-import { use } from "react";
+import { Prisma } from "./generated/prisma/client";
 const PORT = process.env.PORT || 8050;
 const app = express();
 app.use(cors({ origin: "http://localhost:3000" }));
@@ -195,6 +194,7 @@ io.on("connection", (socket) => {
               messageId,
               type: "FOR_ME",
               chatType: "group",
+              lastMessageCreatedAt: new Date(),
             });
           } else {
             await prisma.messages.update({
@@ -207,6 +207,7 @@ io.on("connection", (socket) => {
               messageId,
               type: "FOR_ME",
               chatType: "chat",
+              lastMessageCreatedAt: new Date(),
             });
           }
         }
@@ -222,6 +223,7 @@ io.on("connection", (socket) => {
                 messageId: messageId,
                 chatType: "group",
                 type: "FOR_EVERYONE",
+                lastMessageCreatedAt: new Date(),
               });
             });
           } else {
@@ -234,6 +236,7 @@ io.on("connection", (socket) => {
               messageId,
               type: "FOR_EVERYONE",
               chatType: "chat",
+              lastMessageCreatedAt: new Date(),
             });
           }
         }
@@ -262,6 +265,7 @@ io.on("connection", (socket) => {
       );
       const senderSocketId = onlineUsers[senderId];
       const receiverSocketId = onlineUsers[receiverId];
+
       if (chatType === "group") {
         const groupConversation = await prisma.group.findUnique({
           where: { id: Number(chatListId) },
@@ -282,19 +286,20 @@ io.on("connection", (socket) => {
             },
           },
         });
+        const clearChat = await prisma.chatClear.findUnique({
+          where: {
+            userId_groupId: {
+              userId: Number(senderId),
+              groupId: Number(chatListId),
+            },
+          },
+        });
         const lastMessage = groupConversation?.messages.find(
           (msg) => msg.id === messageId,
         );
+
         if (lastMessage) {
           if (lastMessage?.deletedForAll) {
-            // io.to(String(senderSocketId)).emit("sidebar:update", {
-            //   lastMessage: "This message was deleted",
-            //   sidebarChatId: groupConversation?.id,
-            //   type: "group",
-            //   lastMessageId: null,
-            //   lastMessageCreatedAt: new Date(),
-            //   deleteType: "For_Everypone",
-            // });
             groupConversation?.groupMembers.forEach((member) => {
               const socketId = onlineUsers[Number(member?.userId)];
               console.log(socketId, member);
@@ -314,6 +319,24 @@ io.on("connection", (socket) => {
               ?.filter((msg) => msg?.deletedByMeId !== Number(senderId))
               .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
               .at(-1);
+            if (
+              clearChat &&
+              prevLastMessage &&
+              prevLastMessage?.createdAt <= clearChat?.deletedAt
+            ) {
+              const socketId = onlineUsers[Number(senderId)];
+
+              io.to(String(socketId)).emit("sidebar:update", {
+                lastMessage: "",
+                sidebarChatId: groupConversation?.id,
+                type: "group",
+                lastMessageId: "",
+                lastMessageCreatedAt: null,
+                deleteType: "For_Me",
+              });
+              return;
+            }
+
             io.to(String(senderSocketId)).emit("sidebar:update", {
               lastMessage: prevLastMessage
                 ? prevLastMessage.text
@@ -344,10 +367,14 @@ io.on("connection", (socket) => {
         },
       });
       console.log("deleted message", deleteMessage);
-      const roomId =
-        senderId < receiverId
-          ? `${senderId}-${receiverId}`
-          : `${receiverId}-${senderId}`;
+      const clearChat = await prisma.chatClear.findUnique({
+        where: {
+          userId_chatPartnerUserId: {
+            userId: Number(senderId),
+            chatPartnerUserId: Number(receiverId),
+          },
+        },
+      });
       if (deleteMessage?.deletedForAll) {
         console.log(onlineUsers);
 
@@ -358,7 +385,7 @@ io.on("connection", (socket) => {
           sidebarChatId: chatConversation.id,
           type: chatType,
           lastMessageId: null,
-          lastMessageCreatedAt: null,
+          lastMessageCreatedAt: new Date(),
           deleteType: "For_Everypone",
         });
         socket.to(String(receiverSocketId)).emit("sidebar:update", {
@@ -366,35 +393,52 @@ io.on("connection", (socket) => {
           sidebarChatId: chatConversation.id,
           type: chatType,
           lastMessageId: null,
-          lastMessageCreatedAt: null,
+          lastMessageCreatedAt: new Date(),
           deleteType: "For_Everypone",
         });
         return;
       }
-      const messages = await prisma.messages.findMany();
-      const lastMessages = messages
-        .filter(
-          (msg) =>
-            (msg.senderId === senderId && msg.receiverId === receiverId) ||
-            (msg.senderId === receiverId && msg.receiverId === senderId),
-        )
-        .filter((msg) => msg.deletedByMeId !== senderId)
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
+      const messages = await prisma.messages.findMany({
+        where: {
+          OR: [
+            { senderId: senderId, receiverId: receiverId },
+            { senderId: receiverId, receiverId: senderId },
+          ],
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      const lastValidMessage = messages.find(
+        (msg) =>
+          msg.deletedByMeId !== senderId && // deleted for me ignore
+          msg.deletedForAll !== true, // deleted for everyone ignore
+      );
+      if (
+        clearChat &&
+        lastValidMessage &&
+        lastValidMessage?.createdAt <= clearChat?.deletedAt
+      ) {
+        const socketId = onlineUsers[Number(senderId)];
+
+        io.to(String(socketId)).emit("sidebar:update", {
+          lastMessage: "",
+          sidebarChatId: chatConversation.id,
+          type: "chat",
+          lastMessageId: "",
+          lastMessageCreatedAt: null,
+          deleteType: "For_Me",
+        });
+        return;
+      }
       socket.emit("sidebar:update", {
-        lastMessage: lastMessages
-          ? lastMessages[0]?.text
-            ? lastMessages[0]?.text
-            : "This message was deleted"
-          : "No message yet",
+        lastMessage: lastValidMessage
+          ? (lastValidMessage.text ?? "Send a file")
+          : "",
         sidebarChatId: chatConversation.id,
         type: chatType,
-        lastMessageId: lastMessages
-          ? lastMessages[0]?.id
+        lastMessageId: lastValidMessage
+          ? lastValidMessage?.id
           : "This message was deleted",
-        lastMessageCreatedAt: lastMessages ? lastMessages[0]?.createdAt : null,
+        lastMessageCreatedAt: lastValidMessage?.createdAt ?? null,
         deleteType: "For_Me",
       });
     },
@@ -452,10 +496,124 @@ io.on("connection", (socket) => {
       });
     }
   });
-  socket.on("clearChat", async (senderId, receiverId,type) => {
-    console.log("ids ", senderId, receiverId,type);
-const clearChat=await prisma.
-  });
+  socket.on(
+    "clearChat",
+    async ({ senderId, receiverId, type, groupId, sidebarChatId }) => {
+      console.log(
+        "clear chat signal agted ",
+        senderId,
+        receiverId,
+        type,
+        groupId,
+      );
+      let clearChat = null;
+      if (type === "chat") {
+        const isClearChatOfUserExist = await prisma.chatClear.findUnique({
+          where: {
+            userId_chatPartnerUserId: {
+              userId: Number(senderId),
+              chatPartnerUserId: Number(receiverId),
+            },
+          },
+        });
+        if (isClearChatOfUserExist) {
+          clearChat = await prisma.chatClear.update({
+            where: {
+              userId_chatPartnerUserId: {
+                userId: Number(senderId),
+                chatPartnerUserId: Number(receiverId),
+              },
+            },
+            data: {
+              deletedAt: new Date(),
+            },
+          });
+        } else {
+          clearChat = await prisma.chatClear.create({
+            data: {
+              userId: senderId,
+              chatPartnerUserId: receiverId,
+            },
+          });
+        }
+        // const clearChatAllMessages = await prisma.messages.updateMany({
+        //   where: {
+        //     OR: [
+        //       { senderId: Number(senderId), receiverId: Number(receiverId) },
+        //       { senderId: Number(receiverId), receiverId: Number(senderId) },
+        //     ],
+        //   },
+        //   data: {
+        //     deletedByMeId: Number(senderId),
+        //   },
+        // });
+        socket.emit("sidebar:update", {
+          lastMessage: "",
+          sidebarChatId: sidebarChatId,
+          type: "chat",
+          lastMessageId: null,
+          lastMessageCreatedAt: null,
+          deleteType: "For_Me",
+        });
+        console.log("sodebar update signal send");
+      } else {
+        const isClearChatOfUserExist = await prisma.chatClear.findUnique({
+          where: {
+            userId_groupId: {
+              userId: Number(senderId),
+              groupId: Number(groupId),
+            },
+          },
+        });
+        if (isClearChatOfUserExist) {
+          clearChat = await prisma.chatClear.update({
+            where: {
+              userId_groupId: {
+                userId: Number(senderId),
+                groupId: Number(groupId),
+              },
+            },
+            data: {
+              deletedAt: new Date(),
+            },
+          });
+        } else {
+          clearChat = await prisma.chatClear.create({
+            data: {
+              userId: Number(senderId),
+              groupId: Number(groupId),
+            },
+          });
+        }
+        // const clearChatGroupMessages = await prisma.groupMessage.updateMany({
+        //   where: {
+        //     groupId: Number(groupId),
+        //   },
+        //   data: {
+        //     deletedByMeId: Number(senderId),
+        //   },
+        // });
+        socket.emit("sidebar:update", {
+          lastMessage: "",
+          sidebarChatId: sidebarChatId,
+          type: "group",
+          lastMessageId: null,
+          lastMessageCreatedAt: null,
+          deleteType: "For_Me",
+        });
+      }
+
+      const senderSocketId = onlineUsers[senderId];
+      console.log(senderSocketId);
+      io.to(String(senderSocketId)).emit("clearChat", {
+        clearChat,
+        type: type,
+      });
+
+      console.log("sended clear chat singnal at fontedn");
+    },
+  );
+
   socket.on("disconnect", async () => {
     const userId = socket.data.userId;
     if (!userId) return;
@@ -475,7 +633,6 @@ const clearChat=await prisma.
     io.emit("user-disconnected", disconnectedUserId);
   });
 });
-
 server.listen(PORT, () => {
   console.log(`server is listen on port ${PORT}`);
 });

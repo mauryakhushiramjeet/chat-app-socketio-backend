@@ -14,14 +14,29 @@ export const getMessages = async (req: Request, res: Response) => {
       });
     }
     let message = null;
+    const clearChatExist = await prisma.chatClear.findUnique({
+      where: {
+        userId_chatPartnerUserId: {
+          userId: Number(senderId),
+          chatPartnerUserId: Number(receiverId),
+        },
+      },
+    });
+    const messageWhere: any = {
+      OR: [
+        { senderId: Number(senderId), receiverId: Number(receiverId) },
+        { senderId: Number(receiverId), receiverId: Number(senderId) },
+      ],
+    };
+
+    if (clearChatExist?.deletedAt) {
+      messageWhere.createdAt = {
+        gt: clearChatExist.deletedAt,
+      };
+    }
     if (lastMessageId) {
       message = await prisma.messages.findMany({
-        where: {
-          OR: [
-            { senderId: Number(senderId), receiverId: Number(receiverId) },
-            { senderId: Number(receiverId), receiverId: Number(senderId) },
-          ],
-        },
+        where: messageWhere,
         include: {
           file: {
             where: { isDeleted: false },
@@ -42,14 +57,8 @@ export const getMessages = async (req: Request, res: Response) => {
         skip: 1,
       });
     } else {
-      console.log("getting this no messge id");
       message = await prisma.messages.findMany({
-        where: {
-          OR: [
-            { senderId: Number(senderId), receiverId: Number(receiverId) },
-            { senderId: Number(receiverId), receiverId: Number(senderId) },
-          ],
-        },
+        where: messageWhere,
         include: {
           file: {
             where: { isDeleted: false },
@@ -135,192 +144,8 @@ export const getAllMyMessages = async (req: Request, res: Response) => {
   }
 };
 
-// export const deleteMessageForMe = async (req: Request, res: Response) => {
-//   const { messageId, senderId } = req.body;
-//   try {
-//     if (!messageId || !senderId) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "messageId and senderId are required",
-//       });
-//     }
-//     const message = await prisma.messages.findUnique({
-//       where: { id: messageId },
-//     });
-//     if (!message) {
-//       return res
-//         .status(400)
-//         .json({ success: false, message: "message not found" });
-//     }
-//     if (message.deletedByMeId === senderId) {
-//       return res.status(409).json({
-//         success: false,
-//         message: "Message already deleted for you.",
-//       });
-//     }
-//     if (message.senderId !== senderId) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "You are not authorized to delete this message.",
-//       });
-//     }
-//     await prisma.messages.update({
-//       where: { id: messageId },
-//       data: {
-//         deletedByMeId: senderId,
-//       },
-//     });
-//     return res.status(200).json({
-//       success: true,
-//       message: "Message deleted for you successfully.",
-//     });
-//   } catch (error) {
-//     return res.status(500).json({ success: false, message: error });
-//   }
-// };
-// export const deleteMsgForEverone = async (req: Request, res: Response) => {
-//   const { messageId, senderId } = req.body;
-//   try {
-//     if (!messageId || !senderId) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "messageId and senderId are required",
-//       });
-//     }
-//     const message = await prisma.messages.findUnique({
-//       where: { id: messageId },
-//     });
-//     if (!message) {
-//       return res
-//         .status(400)
-//         .json({ success: false, message: "message not found" });
-//     }
-//     if (message.deletedByMeId === senderId) {
-//       return res.status(409).json({
-//         success: false,
-//         message: "Message already deleted.",
-//       });
-//     }
-//     if (message.senderId !== senderId) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "You are not authorized to delete this message.",
-//       });
-//     }
-//     await prisma.messages.update({
-//       where: { id: messageId },
-//       data: {
-//         deletedForAll: true,
-//         deletedByMeId: senderId,
-//       },
-//     });
-//     return res.status(200).json({
-//       success: true,
-//       message: "Message deleted for evryone successfully.",
-//     });
-//   } catch (error) {
-//     return res.status(500).json({ success: false, message: error });
-//   }
-// };
-// export const getGroupMessages = async (req: Request, res: Response) => {
-//   const { groupId,lastMessageId } = req.query;
-//   if (!groupId) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Group ID is required",
-//     });
-//   }
-
-//   try {
-//     // Fetch messages with sender info
-//     const groupMessagesWithReplies = await prisma.groupMessage.findMany({
-//       where: {
-//         groupId: Number(groupId),
-//       },
-//       orderBy: {
-//         createdAt: "asc",
-//       },
-//       include: {
-//         sender: {
-//           select: {
-//             id: true,
-//             name: true,
-//             image: true,
-//           },
-//         },
-//         file: {
-//           where: { isDeleted: false },
-//           select: {
-//             fileName: true,
-//             filePath: true,
-//             fileType: true,
-//             id: true,
-//             isDeleted: true,
-//           },
-//         },
-//       },
-//     });
-//     const memebers = await prisma.group.findUnique({
-//       where: {
-//         id: Number(groupId),
-//       },
-//       select: {
-//         groupMembers: {
-//           include: {
-//             user: {
-//               select: {
-//                 id: true,
-//                 name: true,
-//                 image: true,
-//               },
-//             },
-//           },
-//         },
-//       },
-//     });
-
-//     const messages = groupMessagesWithReplies.map((groupMsg) => {
-//       const replyMessages = groupMessagesWithReplies.find(
-//         (message) => message?.id === groupMsg?.replyToMessageId,
-//       );
-//       if (groupMsg?.replyToMessageId) {
-//         return {
-//           ...groupMsg,
-//           replyMessage: {
-//             text: replyMessages?.text,
-//             file:
-//               replyMessages?.file && replyMessages?.file?.length > 0
-//                 ? replyMessages?.file
-//                 : null,
-//             createdAt: replyMessages?.createdAt,
-//             id: replyMessages?.id,
-//             // replyMessageSenderId: replyMessages?.replyMessageSenderId,
-//           },
-//         };
-//       } else {
-//         return groupMsg;
-//       }
-//     });
-
-//     const users = memebers?.groupMembers.map((memebers) => memebers.user);
-//     // console.log(users);
-//     return res.status(200).json({
-//       success: true,
-//       message: "Messages fetched successfully",
-//       messages,
-//       users,
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error,
-//     });
-//   }
-// };
 export const getGroupMessages = async (req: Request, res: Response) => {
-  const { groupId, lastMessageId } = req.query;
+  const { groupId, lastMessageId, senderId } = req.query;
   if (!groupId) {
     return res.status(400).json({
       success: false,
@@ -331,11 +156,25 @@ export const getGroupMessages = async (req: Request, res: Response) => {
   try {
     let groupMessagesWithReplies = null;
     // Fetch messages with sender info
-    if (lastMessageId) {
-      groupMessagesWithReplies = await prisma.groupMessage.findMany({
-        where: {
+    const whereGroupMessages: any = { groupId: Number(groupId) };
+
+    const clearChatExist = await prisma.chatClear.findUnique({
+      where: {
+        userId_groupId: {
+          userId: Number(senderId),
           groupId: Number(groupId),
         },
+      },
+    });
+    if (clearChatExist) {
+      whereGroupMessages.createdAt = {
+        gt: clearChatExist.deletedAt,
+      };
+    }
+
+    if (lastMessageId) {
+      groupMessagesWithReplies = await prisma.groupMessage.findMany({
+        where: whereGroupMessages,
         orderBy: {
           createdAt: "desc",
         },
@@ -364,9 +203,7 @@ export const getGroupMessages = async (req: Request, res: Response) => {
       });
     } else {
       groupMessagesWithReplies = await prisma.groupMessage.findMany({
-        where: {
-          groupId: Number(groupId),
-        },
+        where: whereGroupMessages,
         orderBy: {
           createdAt: "desc",
         },
@@ -789,7 +626,7 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
       messages: createMessage,
       files: reponseFiles,
     });
-  } catch (error:any) {
+  } catch (error: any) {
     console.log(error);
     return res.status(500).json({
       success: false,

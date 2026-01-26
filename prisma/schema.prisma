@@ -119,6 +119,6 @@ model ChatClear {
   groupId           Int?
   deletedAt         DateTime @default(now())
 
-  @@index([userId, chatPartnerUserId])
-  @@index([userId, groupId])
+  @@unique([userId, chatPartnerUserId])
+  @@unique([userId, groupId])
 }

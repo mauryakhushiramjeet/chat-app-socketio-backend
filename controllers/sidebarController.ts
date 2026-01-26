@@ -33,12 +33,37 @@ export const sidebarChatList = async (req: Request, res: Response) => {
         lastMessage: "desc",
       },
     });
-
+    const clearChats = await prisma.chatClear.findMany({
+      where: {
+        userId: Number(loggedInUserId),
+        chatPartnerUserId: { not: null },
+      },
+    });
     const updatedConversation = conversations.map((chatConversation) => {
       const lastMessage = messages.find(
-        (msg) => msg.id === chatConversation.lastMessageId
+        (msg) => msg.id === chatConversation.lastMessageId,
       );
-      // console.log(lastMessage, "last deleted message");
+      const chatPartnerId =
+        Number(chatConversation?.chatUserId) === Number(loggedInUserId)
+          ? chatConversation?.currentUserId
+          : chatConversation?.chatUserId;
+      const clearChat = clearChats.find(
+        (cc) =>
+          cc.userId === Number(loggedInUserId) &&
+          cc.chatPartnerUserId === chatPartnerId,
+      );
+      if (
+        lastMessage &&
+        clearChat &&
+        lastMessage?.createdAt <= clearChat?.deletedAt
+      ) {
+        return {
+          ...chatConversation,
+          lastMessage: "",
+          lastMessageId: null,
+          lastMessageCreatedAt: null,
+        };
+      }
       if (lastMessage?.deletedByMeId === Number(loggedInUserId)) {
         const chatMessages = messages
           .filter(
@@ -46,12 +71,12 @@ export const sidebarChatList = async (req: Request, res: Response) => {
               (msg.senderId === chatConversation.currentUserId &&
                 msg.receiverId === chatConversation.chatUserId) ||
               (msg.senderId === chatConversation.chatUserId &&
-                msg.receiverId === chatConversation.currentUserId)
+                msg.receiverId === chatConversation.currentUserId),
           )
           .filter((msg) => msg.deletedByMeId !== Number(loggedInUserId))
           .sort(
             (a, b) =>
-              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
           );
         // console.log("chat message is here", chatMessages, "this");
         const newLastMessage = chatMessages.length
@@ -59,7 +84,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
           : null;
         return {
           ...chatConversation,
-          lastMessage: newLastMessage ? newLastMessage?.text : "admnabkh",
+          lastMessage: newLastMessage ? newLastMessage?.text : "",
           lastMessageId: newLastMessage ? newLastMessage.id : null,
         };
       }
@@ -120,47 +145,35 @@ export const sidebarChatList = async (req: Request, res: Response) => {
         },
       },
     });
-
-    // const yuyu = groupConversation.map((group) => {
-    //   const messages = group.messages.map((msg) => msg);
-    //   // console.log("group messages", messages);
-    //   const lastMessage = messages[0];
-    //   if (lastMessage?.deletedForAll) {
-    //     return {
-    //       // ...groupConversation,
-    //       id: group.id,
-    //       name: group.name,
-    //       type: "group",
-    //       groupImage: group?.image ?? null,
-    //       lastMessage: "This message was deleted",
-    //       lastMessageId: lastMessage?.id,
-    //       lastMessageCreatedAt: lastMessage.createdAt ?? null,
-    //     };
-    //   }
-    //   if (lastMessage?.deletedByMeId === Number(loggedInUserId)) {
-    //     const previousMessages = messages
-    //       .filter((msg) => msg.deletedByMeId !== Number(loggedInUserId))
-    //       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
-    //       .at(-1);
-    //     return {
-    //       id: group.id,
-    //       name: group.name,
-    //       type: "group",
-    //       groupImage: group?.image ?? null,
-    //       lastMessage: previousMessages
-    //         ? previousMessages?.text
-    //         : "Start conversation",
-    //       lastMessageId: previousMessages ? previousMessages?.id : null,
-    //       lastMessageCreatedAt: lastMessage.createdAt ?? null,
-    //     };
-    //   }
-    // });
-
+    const clearChat = await prisma.chatClear.findMany({
+      where: {
+        userId: Number(loggedInUserId),
+        groupId: { not: null },
+      },
+    });
     const formatedGroupConversation = groupConversation.map((group) => {
       const messages = group.messages;
       const lastMessage = messages[0];
-
-      // console.log("messsages", messages);
+      const isClearChat = clearChat.find(
+        (cc) => Number(cc.groupId) === Number(group?.id),
+      );
+      console.log("clear chat", isClearChat);
+      if (
+        isClearChat &&
+        lastMessage &&
+        lastMessage?.createdAt <= isClearChat?.deletedAt
+      ) {
+        return {
+          id: group.id,
+          name: group.name,
+          type: "group",
+          groupImage: group.image ?? null,
+          lastMessage: "",
+          lastMessageId: null,
+          lastMessageCreatedAt: null,
+        };
+      }
+    
       if (lastMessage?.deletedForAll) {
         return {
           id: group.id,
@@ -211,7 +224,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
       ...formatedChatConversation,
       ...formatedGroupConversation,
     ];
-
+    console.log(sidebarchatsAndGroupConverstions);
     return res.status(200).json({
       success: true,
       message: "get all the all sidebar conversation successfully",
