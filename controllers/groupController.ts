@@ -68,9 +68,9 @@ export const createGroup = async (req: Request, res: Response) => {
       const socketId = onlineUsers[userId];
       if (socketId) {
         io.to(socketId).emit("groupCreate", {
-          id:group?.id,
-          name:group?.name,
-          image:group?.image,
+          id: group?.id,
+          name: group?.name,
+          image: group?.image,
           members,
         });
       }
@@ -87,6 +87,51 @@ export const createGroup = async (req: Request, res: Response) => {
     io.to(String(userSocketId)).emit("groupCreate:error", {
       error,
     });
+    return res.status(500).json({ success: false, message: error });
+  }
+};
+export const updatelastMessageId = async (req: Request, res: Response) => {
+  const { groupId, lastMessageId, userId } = req.body;
+  console.log(groupId, lastMessageId, userId);
+  try {
+    await prisma.groupMembers.update({
+      where: {
+        userId_groupId: {
+          userId: Number(userId),
+          groupId: Number(groupId),
+        },
+      },
+      data: {
+        lastSeenMessageId: Number(lastMessageId),
+      },
+      select: {
+        lastSeenMessageId: true,
+        user: {
+          select: {
+            name: true,
+            id: true,
+            image: true,
+          },
+        },
+      },
+    });
+    const memebers = await prisma.groupMembers.findMany({
+      where: {
+        groupId: Number(groupId),
+      },
+      select: {
+        lastSeenMessageId: true,
+        user: {
+          select: {
+            name: true,
+            id: true,
+            image: true,
+          },
+        },
+      },
+    });
+    return res.json({ success: true, memebers });
+  } catch (error) {
     return res.status(500).json({ success: false, message: error });
   }
 };

@@ -14,20 +14,21 @@ datasource db {
 }
 
 model User {
-  id            Int                @id @default(autoincrement())
-  name          String
-  email         String             @unique
-  password      String
-  image         String?
-  about         String?
-  groupMember   GroupMembers[]
-  groupMessage  GroupMessage[]
-  messageSent   Messages[]         @relation("setMessage")
-  messageReciev Messages[]         @relation("recievMessage")
-  currentUser   ChatConversation[] @relation("currentUser")
-  ChatUser      ChatConversation[] @relation("chatUser")
-  LastActiveAt  DateTime?
-  createdAt     DateTime           @default(now())
+  id               Int                @id @default(autoincrement())
+  name             String
+  email            String             @unique
+  password         String
+  image            String?
+  about            String?
+  verificationCode String?
+  groupMember      GroupMembers[]
+  groupMessage     GroupMessage[]
+  messageSent      Messages[]         @relation("setMessage")
+  messageReciev    Messages[]         @relation("recievMessage")
+  currentUser      ChatConversation[] @relation("currentUser")
+  ChatUser         ChatConversation[] @relation("chatUser")
+  LastActiveAt     DateTime?
+  createdAt        DateTime           @default(now())
 }
 
 enum Status {
@@ -75,12 +76,16 @@ model Group {
 }
 
 model GroupMembers {
-  id      Int      @id @default(autoincrement())
-  userId  Int
-  groupId Int
-  admin   Boolean? @default(false)
-  user    User     @relation(references: [id], fields: [userId])
-  group   Group    @relation(references: [id], fields: [groupId])
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  groupId           Int
+  // lastMessageSeenId Int?
+  lastSeenMessageId Int?
+  admin             Boolean? @default(false)
+  user              User     @relation(references: [id], fields: [userId])
+  group             Group    @relation(references: [id], fields: [groupId])
+
+  @@unique([userId, groupId])
 }
 
 model GroupMessage {

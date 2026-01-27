@@ -3,7 +3,8 @@ import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma";
 import type { Request, Response } from "express";
 import { io, onlineUsers } from "../server";
-
+import { createToken } from "../authMiddleware/createToken";
+import { sendVerifyEmail } from "../emailServices";
 export const signup = async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
@@ -26,20 +27,24 @@ export const signup = async (req: Request, res: Response) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     const user = await prisma.user.create({
       data: {
         name,
         email,
+        verificationCode: code,
         image: req.file ? req.file.path : null,
         password: hashedPassword,
       },
     });
+    const userId = user?.id;
+    const token = createToken(userId);
+    sendVerifyEmail(email, code);
     console.log("save");
 
     return res.status(201).json({
       success: true,
-      message: "Signup successful",
+      message: "Verify email sended on you mail, please verify",
       data: {
         id: user.id,
         name: name,

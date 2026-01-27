@@ -236,7 +236,8 @@ export const getGroupMessages = async (req: Request, res: Response) => {
       },
       select: {
         groupMembers: {
-          include: {
+          select: {
+            lastSeenMessageId: true,
             user: {
               select: {
                 id: true,
@@ -272,7 +273,7 @@ export const getGroupMessages = async (req: Request, res: Response) => {
       }
     });
 
-    const users = memebers?.groupMembers.map((memebers) => memebers.user);
+    const users = memebers?.groupMembers.map((memebers) => memebers);
     // console.log(users);
     return res.status(200).json({
       success: true,
@@ -359,7 +360,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     });
     const response = message;
     let reponseFiles = null;
-    if (files || files?.length > 0) {
+    if (files && files?.length > 0) {
       const createdFile = await Promise.all(
         files.map((file) =>
           prisma.file.create({

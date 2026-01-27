@@ -613,7 +613,73 @@ io.on("connection", (socket) => {
       console.log("sended clear chat singnal at fontedn");
     },
   );
-
+  socket.on(
+    "memeberLastMsgSeenUpdate",
+    async ({ messageSenderId, lastMessageId, memberId, groupId }) => {
+      console.log(
+        "memeber last message id update signal",
+        "messageSenderid",
+        messageSenderId,
+        "last mesgf id",
+        lastMessageId,
+        "memeberid",
+        memberId,
+        "groupId",
+        groupId,
+      );
+      await prisma.groupMembers.update({
+        where: {
+          userId_groupId: {
+            userId: memberId,
+            groupId: groupId,
+          },
+        },
+        data: {
+          lastSeenMessageId: lastMessageId,
+        },
+      });
+      const memeber = await prisma.groupMembers.findMany({
+        where: {
+          groupId: groupId,
+        },
+        select: {
+          // userId: true,
+          lastSeenMessageId: true,
+          user: {
+            select: {
+              name: true,
+              id: true,
+              image: true,
+            },
+          },
+        },
+      });
+      io.to(String(onlineUsers[messageSenderId])).emit("groupMsgSeen", {
+        lastMessageId,
+        memebers: memeber,
+      });
+    },
+  );
+  socket.on("groupMsgSeen", async ({ groupId, messageSenderUserId }) => {
+    const memeber = await prisma.groupMembers.findMany({
+      where: {
+        groupId: groupId,
+      },
+      select: {
+        lastSeenMessageId: true,
+        user: {
+          select: {
+            name: true,
+            id: true,
+            image: true,
+          },
+        },
+      },
+    });
+    io.to(String(onlineUsers[messageSenderUserId])).emit("groupMsgSeen", {
+      memebers: memeber,
+    });
+  });
   socket.on("disconnect", async () => {
     const userId = socket.data.userId;
     if (!userId) return;

@@ -17,7 +17,7 @@ import {
   sendGroupMessage,
   sendMessage,
 } from "./controllers/messageController";
-import { createGroup } from "./controllers/groupController";
+import { createGroup, updatelastMessageId } from "./controllers/groupController";
 import { sidebarChatList } from "./controllers/sidebarController";
 
 const router = Router();
@@ -35,7 +35,9 @@ router.get("/userConversations", getAllConverSationUsers);
 router.get("/getAllMyMessages", getAllMyMessages);
 router.put("/updateProfile", upload.single("image"), updateProfile);
 router.post("/createGroup", upload.single("image"), createGroup);
+router.post("/verifyEmailOtp",emailOtpVerify)
 router.get("/getSidebarChatList", sidebarChatList);
 router.get("/getGroupMessages", getGroupMessages);
+router.put("/updateMemberLastMsgId",updatelastMessageId)
 router.put("/updateMessageFile", upload.array("file"), editMessageFile);
 export default router;
