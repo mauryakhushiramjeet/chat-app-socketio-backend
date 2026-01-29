@@ -34,6 +34,15 @@ export const getMessages = async (req: Request, res: Response) => {
         gt: clearChatExist.deletedAt,
       };
     }
+    const firstMessage = await prisma.messages.findFirst({
+      where: messageWhere,
+      orderBy: {
+        createdAt: "asc",
+      },
+      select: {
+        id: true,
+      },
+    });
     if (lastMessageId) {
       message = await prisma.messages.findMany({
         where: messageWhere,
@@ -100,11 +109,13 @@ export const getMessages = async (req: Request, res: Response) => {
         return msg;
       }
     });
+    console.log(firstMessage?.id, "fist message id");
     return res.status(200).json({
       success: true,
       message: "message get successfully",
       messages,
       loadType: lastMessageId ? "PAGINATION" : "INITIAL",
+      firstMessageId: firstMessage?.id,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error });
@@ -172,6 +183,15 @@ export const getGroupMessages = async (req: Request, res: Response) => {
       };
     }
 
+    const firstMessage = await prisma.groupMessage.findFirst({
+      where: whereGroupMessages,
+      orderBy: {
+        createdAt: "asc",
+      },
+      select: {
+        id: true,
+      },
+    });
     if (lastMessageId) {
       groupMessagesWithReplies = await prisma.groupMessage.findMany({
         where: whereGroupMessages,
@@ -281,6 +301,7 @@ export const getGroupMessages = async (req: Request, res: Response) => {
       messages,
       users,
       loadType: lastMessageId ? "PAGINATION" : "INITIAL",
+      firstMessageId: firstMessage?.id,
     });
   } catch (error) {
     console.log(error);

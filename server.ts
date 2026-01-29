@@ -17,6 +17,7 @@ export const io = new Server(server, {
 });
 export const onlineUsers: { [key: string]: string } = {};
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 io.on("connection", (socket) => {
   console.log("socket connected:", socket.id);
   socket.on("online-users", (userId) => {
@@ -36,27 +37,76 @@ io.on("connection", (socket) => {
     console.log("ROOM:", roomId);
     console.log("TOTAL SOCKETS:", clients ? clients.size : 0);
   });
-  socket.on("typing", ({ senderId, receiverId }) => {
-    const roomId =
-      senderId < receiverId
-        ? `${senderId}-${receiverId}`
-        : `${receiverId}-${senderId}`;
-
-    socket.to(roomId).emit("userTyping", {
-      senderId,
-      receiverId,
-    });
+  socket.on("typing", async ({ senderId, receiverId, type, groupId }) => {
+    console.log("reciver typing signal ", senderId, receiverId, type, groupId);
+    if (type === "group") {
+      const memebers = await prisma.groupMembers.findMany({
+        where: {
+          groupId: Number(groupId),
+        },
+        select: {
+          userId: true,
+        },
+      });
+      const reciversMember = memebers.filter((m) => m.userId !== senderId);
+      reciversMember.map((m) => {
+        const reciversSocketId = onlineUsers[m.userId];
+        socket.to(String(reciversSocketId)).emit("userTyping", {
+          senderId,
+          receiverId: m.userId,
+          type,
+          groupId,
+        });
+      });
+      console.log(reciversMember, "recivermemeber", senderId, "sender");
+    } else {
+      const roomId =
+        senderId < receiverId
+          ? `${senderId}-${receiverId}`
+          : `${receiverId}-${senderId}`;
+      console.log("sendt this signal to ", onlineUsers[receiverId]);
+      socket.to(String(onlineUsers[receiverId])).emit("userTyping", {
+        senderId,
+        receiverId,
+        type,
+      });
+    }
   });
-  socket.on("stopTyping", ({ senderId, receiverId }) => {
-    const roomId =
-      senderId < receiverId
-        ? `${senderId}-${receiverId}`
-        : `${receiverId}-${senderId}`;
+  socket.on("stopTyping", async ({ senderId, receiverId, type, groupId }) => {
+    console.log("get stop signal",senderId, receiverId, type, groupId,"ather")
+    if (type === "group") {
+      const memebers = await prisma.groupMembers.findMany({
+        where: {
+          groupId: Number(groupId),
+        },
+        select: {
+          userId: true,
+        },
+      });
+      const reciversMember = memebers.filter((m) => m.userId !== senderId);
+      reciversMember.map((m) => {
+        const reciversSocketId = onlineUsers[m.userId];
+        socket.to(String(reciversSocketId)).emit("userStopTyping", {
+          senderId,
+          receiverId: m.userId,
+          type,
+          groupId,
+        });
+      });
+      console.log(reciversMember, "recivermemeber", senderId, "sender");
+    } else {
+      const roomId =
+        senderId < receiverId
+          ? `${senderId}-${receiverId}`
+          : `${receiverId}-${senderId}`;
 
-    socket.to(roomId).emit("userStopTyping", {
-      senderId,
-      receiverId,
-    });
+      socket.to(roomId).emit("userStopTyping", {
+        senderId,
+        receiverId,
+        type,
+        groupId: null,
+      });
+    }
   });
   // socket.on(
   //   "sendMessage",

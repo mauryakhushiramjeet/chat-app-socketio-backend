@@ -14,21 +14,23 @@ datasource db {
 }
 
 model User {
-  id               Int                @id @default(autoincrement())
-  name             String
-  email            String             @unique
-  password         String
-  image            String?
-  about            String?
-  verificationCode String?
-  groupMember      GroupMembers[]
-  groupMessage     GroupMessage[]
-  messageSent      Messages[]         @relation("setMessage")
-  messageReciev    Messages[]         @relation("recievMessage")
-  currentUser      ChatConversation[] @relation("currentUser")
-  ChatUser         ChatConversation[] @relation("chatUser")
-  LastActiveAt     DateTime?
-  createdAt        DateTime           @default(now())
+  id                        Int                @id @default(autoincrement())
+  name                      String
+  email                     String             @unique
+  password                  String
+  image                     String?
+  about                     String?
+  verificationCode          String?
+  verificationCodeExpiresAt DateTime?
+  emailVerify               Boolean            @default(false)
+  groupMember               GroupMembers[]
+  groupMessage              GroupMessage[]
+  messageSent               Messages[]         @relation("setMessage")
+  messageReciev             Messages[]         @relation("recievMessage")
+  currentUser               ChatConversation[] @relation("currentUser")
+  ChatUser                  ChatConversation[] @relation("chatUser")
+  LastActiveAt              DateTime?
+  createdAt                 DateTime           @default(now())
 }
 
 enum Status {

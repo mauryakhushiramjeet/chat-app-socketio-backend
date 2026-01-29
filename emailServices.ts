@@ -20,48 +20,81 @@ transporter.verify((error) => {
 export const sendVerifyEmail = async (
   toEmail: string,
   verificationCode: string,
+  subject: String,
+  warningMessage: String,
 ) => {
   try {
     const mailOptions = {
       from: process.env.USER_EMAIL,
       to: toEmail,
-      subject: "Your OTP Code for Email Verification",
+      subject: `${subject}`, // Keeping your exact subject
       html: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>OTP Verification</title>
-          </head>
-          <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>OTP Verification</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f6f9fc;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f6f9fc; padding: 40px 20px;">
+        <tr>
+          <td align="center">
+            <!-- Main Card -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(87, 76, 214, 0.08); overflow: hidden;">
+              
+              <!-- Top Accent Bar -->
               <tr>
-                <td align="center" style="padding: 40px 0;">
-                  <table width="400" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <tr>
-                      <td style="padding: 30px; text-align: center;">
-                        <h2 style="color: #333333; margin: 0 0 20px 0;">Email Verification</h2>
-                        <p style="color: #555555; font-size: 16px; margin: 0 0 30px 0;">
-                          Use the following OTP to verify your email address:
-                        </p>
-                        <div style="font-size: 28px; font-weight: bold; color: #1a73e8; letter-spacing: 4px; margin-bottom: 30px;">
-                          ${verificationCode}
-                        </div>
-                        <p style="color: #777777; font-size: 14px; margin: 0;">
-                          This OTP is valid for <strong>10 minutes</strong>.
-                        </p>
-                      </td>
-                    </tr>
-                  </table>
-                  <p style="color: #999999; font-size: 12px; margin-top: 20px;">
-                    If you did not request this OTP, please ignore this email.
+                <td style="height: 6px; background-color: #574CD6;"></td>
+              </tr>
+
+              <tr>
+                <td style="padding: 40px; text-align: center;">
+                  <!-- Icon/Logo Placeholder -->
+                  <div style="margin-bottom: 25px;">
+                    <div style="display: inline-block; width: 60px; height: 60px; background-color: #f0effc; border-radius: 50%; line-height: 60px;">
+                      <span style="font-size: 28px;">🔐</span>
+                    </div>
+                  </div>
+
+                  <h2 style="color: #1a1f36; font-size: 24px; font-weight: 700; margin: 0 0 16px 0;">
+                    Email Verification
+                  </h2>
+                  
+                  <p style="color: #4f566b; font-size: 16px; line-height: 24px; margin: 0 0 32px 0;">
+                    Use the following OTP to verify your email address:
+                  </p>
+
+                  <!-- OTP Display -->
+                  <div style="background-color: #f8faff; border: 1px solid #e3e8ee; border-radius: 12px; padding: 20px; margin-bottom: 32px;">
+                    <div style="font-family: 'Courier New', Courier, monospace; font-size: 36px; font-weight: 800; color: #574CD6; letter-spacing: 6px;">
+                      ${verificationCode}
+                    </div>
+                  </div>
+
+                  <!-- Warning Message -->
+                  <p style="color: #697386; font-size: 14px; line-height: 20px; margin: 0;">
+                    ${warningMessage} <strong> 5 minutes</strong>.
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="padding: 24px; background-color: #f9fafb; text-align: center; border-top: 1px solid #edf2f7;">
+                  <p style="margin: 0; color: #a3acb9; font-size: 12px;">
+                    This is an automated security notification.
                   </p>
                 </td>
               </tr>
             </table>
-          </body>
-        </html>
-      `,
+
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `,
     };
 
     const info = await transporter.sendMail(mailOptions);

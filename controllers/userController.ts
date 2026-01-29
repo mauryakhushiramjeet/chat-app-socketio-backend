@@ -39,18 +39,22 @@ export const signup = async (req: Request, res: Response) => {
     });
     const userId = user?.id;
     const token = createToken(userId);
-    sendVerifyEmail(email, code);
+    const subject = "Your OTP Code for Email Verification";
+    const warningMessage =
+      "This is an email verification code. It will expire in";
+    sendVerifyEmail(email, code, subject, warningMessage);
     console.log("save");
 
     return res.status(201).json({
       success: true,
-      message: "Verify email sended on you mail, please verify",
+      message: "We have sent a code to your email please check",
       data: {
         id: user.id,
         name: name,
         image: user.image,
         email: email,
         about: user?.about,
+        isEmailVerify: user?.emailVerify,
       },
     });
   } catch (error) {
@@ -125,6 +129,11 @@ export const login = async (req: Request, res: Response) => {
     if (!userExist) {
       return res.status(400).json({ success: false, message: "Invalide user" });
     }
+    if (!userExist.emailVerify) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email is not verify" });
+    }
     const validatePassword = await bcrypt.compare(password, userExist.password);
     if (!validatePassword) {
       return res
@@ -140,6 +149,7 @@ export const login = async (req: Request, res: Response) => {
         email: userExist.email,
         image: userExist.image,
         about: userExist?.about,
+        isEmailVerify: userExist?.emailVerify,
       },
     });
   } catch (error) {
@@ -218,7 +228,6 @@ export const updateProfile = async (req: Request, res: Response) => {
         name: updatedUser.name,
         about: updatedUser.about,
       });
-      console.log("Sent profile update signal to client");
     });
     return res.status(200).json({
       success: true,
@@ -230,6 +239,122 @@ export const updateProfile = async (req: Request, res: Response) => {
         image: updatedUser.image,
         about: updatedUser?.about,
       },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error });
+  }
+};
+export const forgetPassword = async (req: Request, res: Response) => {
+  const { email } = req.body;
+  try {
+    if (!email) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email is required" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    const otp = Math.floor(100000 + Math.random() * 999999).toString();
+    const otpExpAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await prisma.user.update({
+      where: {
+        email: email,
+      },
+      data: {
+        verificationCode: otp,
+        verificationCodeExpiresAt: otpExpAt,
+      },
+    });
+    const subject = "Forgot Password OTP";
+    const warningMessage =
+      "Use this code to forget your password. It will expire in";
+    sendVerifyEmail(email, otp, subject, warningMessage);
+    return res.status(200).json({
+      success: true,
+      message: "We have sent a code to your email please check",
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error });
+  }
+};
+export const verifyForgetPasswordOtp = async (req: Request, res: Response) => {
+  const { email, otp } = req.body;
+  try {
+    if (!email || !otp) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email and otp are  required" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    if (
+      user.verificationCodeExpiresAt &&
+      user.verificationCodeExpiresAt < new Date()
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP expired. Please try again." });
+    }
+    if (user.verificationCode !== otp) {
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+    await prisma.user.update({
+      where: {
+        email: email,
+      },
+      data: {
+        verificationCode: null,
+        verificationCodeExpiresAt: null,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Otp verifeid successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error });
+  }
+};
+export const resetPassword = async (req: Request, res: Response) => {
+  const { email, newPassword } = req.body;
+  try {
+    if (!email || !newPassword) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email and password are  required" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    const hashPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: {
+        email: email,
+      },
+      data: {
+        password: hashPassword,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password has been reset successfully",
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error });
