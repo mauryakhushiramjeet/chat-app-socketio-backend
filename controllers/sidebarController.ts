@@ -62,6 +62,8 @@ export const sidebarChatList = async (req: Request, res: Response) => {
           lastMessage: "",
           lastMessageId: null,
           lastMessageCreatedAt: null,
+          status: null,
+          messageSenderId:null
         };
       }
       if (lastMessage?.deletedByMeId === Number(loggedInUserId)) {
@@ -86,6 +88,8 @@ export const sidebarChatList = async (req: Request, res: Response) => {
           ...chatConversation,
           lastMessage: newLastMessage ? newLastMessage?.text : "",
           lastMessageId: newLastMessage ? newLastMessage.id : null,
+          status: newLastMessage ? newLastMessage?.status : null,
+          messageSenderId:newLastMessage?newLastMessage?.senderId:null
         };
       }
       if (lastMessage?.deletedForAll === true) {
@@ -93,11 +97,13 @@ export const sidebarChatList = async (req: Request, res: Response) => {
           ...chatConversation,
           lastMessage: "This message was deleted",
           lastMessageId: null,
+          status: lastMessage?.status,
+          messageSenderId:lastMessage?lastMessage?.senderId:null
         };
       }
-      return chatConversation;
+      return { ...chatConversation, status: lastMessage?.status,messageSenderId:lastMessage?.senderId};
     });
-
+    // console.log("status", updatedConversation);
     const formatedChatConversation = updatedConversation.map((conversation) => {
       const isLoggedUserIschatUser =
         conversation.chatUser?.id === Number(loggedInUserId);
@@ -107,6 +113,8 @@ export const sidebarChatList = async (req: Request, res: Response) => {
         lastMessage: conversation?.lastMessage,
         lastMessageCreatedAt: conversation?.lastMessageCreatedAt,
         lastMessageId: conversation.lastMessageId,
+        status: conversation.status,
+        messageSenderId:conversation?.messageSenderId,
         chatUser: isLoggedUserIschatUser
           ? {
               id: conversation.currentUser?.id,
@@ -157,7 +165,6 @@ export const sidebarChatList = async (req: Request, res: Response) => {
       const isClearChat = clearChat.find(
         (cc) => Number(cc.groupId) === Number(group?.id),
       );
-      console.log("clear chat", isClearChat);
       if (
         isClearChat &&
         lastMessage &&
@@ -173,7 +180,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
           lastMessageCreatedAt: null,
         };
       }
-    
+
       if (lastMessage?.deletedForAll) {
         return {
           id: group.id,
@@ -224,7 +231,6 @@ export const sidebarChatList = async (req: Request, res: Response) => {
       ...formatedChatConversation,
       ...formatedGroupConversation,
     ];
-    console.log(sidebarchatsAndGroupConverstions);
     return res.status(200).json({
       success: true,
       message: "get all the all sidebar conversation successfully",

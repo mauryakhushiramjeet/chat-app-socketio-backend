@@ -16,12 +16,15 @@ export const io = new Server(server, {
   },
 });
 export const onlineUsers: { [key: string]: string } = {};
+app.use((req, res, next) => {
+  res.setHeader("ngrok-skip-browser-warning", "true");
+  next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 io.on("connection", (socket) => {
   console.log("socket connected:", socket.id);
   socket.on("online-users", (userId) => {
-    // console.log("request for online user from clien ", userId);
     onlineUsers[userId] = socket.id;
     socket.data.userId = userId;
     io.emit("online-users", Object.keys(onlineUsers));
@@ -38,7 +41,6 @@ io.on("connection", (socket) => {
     console.log("TOTAL SOCKETS:", clients ? clients.size : 0);
   });
   socket.on("typing", async ({ senderId, receiverId, type, groupId }) => {
-    console.log("reciver typing signal ", senderId, receiverId, type, groupId);
     if (type === "group") {
       const memebers = await prisma.groupMembers.findMany({
         where: {
@@ -58,13 +60,11 @@ io.on("connection", (socket) => {
           groupId,
         });
       });
-      console.log(reciversMember, "recivermemeber", senderId, "sender");
     } else {
       const roomId =
         senderId < receiverId
           ? `${senderId}-${receiverId}`
           : `${receiverId}-${senderId}`;
-      console.log("sendt this signal to ", onlineUsers[receiverId]);
       socket.to(String(onlineUsers[receiverId])).emit("userTyping", {
         senderId,
         receiverId,
@@ -73,7 +73,7 @@ io.on("connection", (socket) => {
     }
   });
   socket.on("stopTyping", async ({ senderId, receiverId, type, groupId }) => {
-    console.log("get stop signal",senderId, receiverId, type, groupId,"ather")
+  
     if (type === "group") {
       const memebers = await prisma.groupMembers.findMany({
         where: {
@@ -93,7 +93,6 @@ io.on("connection", (socket) => {
           groupId,
         });
       });
-      console.log(reciversMember, "recivermemeber", senderId, "sender");
     } else {
       const roomId =
         senderId < receiverId
@@ -108,33 +107,9 @@ io.on("connection", (socket) => {
       });
     }
   });
-  // socket.on(
-  //   "sendMessage",
-  //   async ({ clientMessageId, senderId, receiverId, text, type }) => {
-  //     const roomId =
-  //       senderId < receiverId
-  //         ? `${senderId}-${receiverId}`
-  //         : `${receiverId}-${senderId}`;
-  //     const addMessage = await axios.post("http://localhost:8085/addMessage", {
-  //       senderId,
-  //       receiverId,
-  //       text,
-  //     });
-  //     const response = addMessage.data.messages;
-
-  //   }
-  // );
-  // socket.on(
-  //   "sendGroupMessage",
-  //   async ({ groupId, message, messageSenderId }) => {
-  //     try {
-
-  //     } catch (error) {
-  //       console.log(error);
-  //     }
-  //   }
-  // );
-  socket.on("status:delivered", async ({ messageId }) => {
+ 
+  socket.on("status:delivered", async ({ messageId, conversationId }) => {
+    console.log("conversation is mainderf kehriher jherhgr", conversationId);
     const message = await prisma.messages.findUnique({
       where: { id: messageId },
     });
@@ -151,6 +126,7 @@ io.on("connection", (socket) => {
     if (senderSocketId) {
       io.to(senderSocketId).emit("status:delivered", {
         messageId,
+        conversationId,
       });
     }
   });
@@ -158,7 +134,6 @@ io.on("connection", (socket) => {
   socket.on(
     "message:delete",
     async ({ messageId, senderId, receiverId, type, chatType }) => {
-      console.log("get this delete signal at server");
       try {
         if (!messageId || !senderId) {
           socket.emit("message:error", {
@@ -300,19 +275,7 @@ io.on("connection", (socket) => {
   socket.on(
     "sidebar:update",
     async ({ chatType, senderId, receiverId, chatListId, messageId }) => {
-      console.log(
-        "getd signal for sidebar update at derver side",
-        "tye",
-        chatType,
-        "senderId",
-        senderId,
-        "receiverId",
-        receiverId,
-        "chatLostId",
-        chatListId,
-        "messageId",
-        messageId,
-      );
+      
       const senderSocketId = onlineUsers[senderId];
       const receiverSocketId = onlineUsers[receiverId];
 
@@ -352,7 +315,6 @@ io.on("connection", (socket) => {
           if (lastMessage?.deletedForAll) {
             groupConversation?.groupMembers.forEach((member) => {
               const socketId = onlineUsers[Number(member?.userId)];
-              console.log(socketId, member);
               io.to(String(socketId)).emit("sidebar:update", {
                 lastMessage: "This message was deleted",
                 sidebarChatId: groupConversation?.id,
@@ -362,7 +324,6 @@ io.on("connection", (socket) => {
                 deleteType: "For_Everypone",
               });
             });
-            console.log("send socket for delete for everryon , dleeteBy me");
           }
           if (lastMessage.deletedByMeId === Number(senderId)) {
             const prevLastMessage = groupConversation?.messages
@@ -399,7 +360,6 @@ io.on("connection", (socket) => {
               lastMessageCreatedAt: prevLastMessage?.createdAt ?? new Date(),
               deleteType: "For_Me",
             });
-            console.log("send socket for delete for me , dleeteBy me");
           }
         }
         return;
@@ -408,7 +368,6 @@ io.on("connection", (socket) => {
         where: { id: Number(chatListId) },
       });
       if (!chatConversation) {
-        console.log("this conversation is not exist");
         return;
       }
       const deleteMessage = await prisma.messages.findUnique({
@@ -416,7 +375,6 @@ io.on("connection", (socket) => {
           id: messageId,
         },
       });
-      console.log("deleted message", deleteMessage);
       const clearChat = await prisma.chatClear.findUnique({
         where: {
           userId_chatPartnerUserId: {
@@ -426,9 +384,7 @@ io.on("connection", (socket) => {
         },
       });
       if (deleteMessage?.deletedForAll) {
-        console.log(onlineUsers);
-
-        console.log(senderSocketId, receiverSocketId);
+        
 
         io.to(String(senderSocketId)).emit("sidebar:update", {
           lastMessage: "This message was deleted",
@@ -494,7 +450,7 @@ io.on("connection", (socket) => {
     },
   );
 
-  socket.on("status:Read", async ({ messageId }) => {
+  socket.on("status:Read", async ({ messageId, conversationId }) => {
     const message = await prisma.messages.update({
       where: { id: messageId },
       data: {
@@ -506,6 +462,7 @@ io.on("connection", (socket) => {
 
     io.to(String(senderSocketId)).emit("status:Read", {
       messageId,
+      conversationId,
     });
   });
 
@@ -549,13 +506,7 @@ io.on("connection", (socket) => {
   socket.on(
     "clearChat",
     async ({ senderId, receiverId, type, groupId, sidebarChatId }) => {
-      console.log(
-        "clear chat signal agted ",
-        senderId,
-        receiverId,
-        type,
-        groupId,
-      );
+     
       let clearChat = null;
       if (type === "chat") {
         const isClearChatOfUserExist = await prisma.chatClear.findUnique({
@@ -604,8 +555,8 @@ io.on("connection", (socket) => {
           lastMessageId: null,
           lastMessageCreatedAt: null,
           deleteType: "For_Me",
+          status:null
         });
-        console.log("sodebar update signal send");
       } else {
         const isClearChatOfUserExist = await prisma.chatClear.findUnique({
           where: {
@@ -635,14 +586,7 @@ io.on("connection", (socket) => {
             },
           });
         }
-        // const clearChatGroupMessages = await prisma.groupMessage.updateMany({
-        //   where: {
-        //     groupId: Number(groupId),
-        //   },
-        //   data: {
-        //     deletedByMeId: Number(senderId),
-        //   },
-        // });
+       
         socket.emit("sidebar:update", {
           lastMessage: "",
           sidebarChatId: sidebarChatId,
@@ -650,33 +594,22 @@ io.on("connection", (socket) => {
           lastMessageId: null,
           lastMessageCreatedAt: null,
           deleteType: "For_Me",
+          status:null
         });
       }
 
       const senderSocketId = onlineUsers[senderId];
-      console.log(senderSocketId);
       io.to(String(senderSocketId)).emit("clearChat", {
         clearChat,
         type: type,
       });
 
-      console.log("sended clear chat singnal at fontedn");
     },
   );
   socket.on(
     "memeberLastMsgSeenUpdate",
     async ({ messageSenderId, lastMessageId, memberId, groupId }) => {
-      console.log(
-        "memeber last message id update signal",
-        "messageSenderid",
-        messageSenderId,
-        "last mesgf id",
-        lastMessageId,
-        "memeberid",
-        memberId,
-        "groupId",
-        groupId,
-      );
+      
       await prisma.groupMembers.update({
         where: {
           userId_groupId: {

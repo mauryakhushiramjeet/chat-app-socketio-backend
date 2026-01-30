@@ -4,7 +4,6 @@ import { io, onlineUsers } from "../server";
 
 export const getMessages = async (req: Request, res: Response) => {
   const { senderId, receiverId, lastMessageId } = req.query; // <-- use query
-  console.log(senderId, receiverId, "in api");
   try {
     if (!senderId || !receiverId) {
       return res.status(400).json({
@@ -109,7 +108,6 @@ export const getMessages = async (req: Request, res: Response) => {
         return msg;
       }
     });
-    console.log(firstMessage?.id, "fist message id");
     return res.status(200).json({
       success: true,
       message: "message get successfully",
@@ -123,7 +121,6 @@ export const getMessages = async (req: Request, res: Response) => {
 };
 export const getAllMyMessages = async (req: Request, res: Response) => {
   const { receiverId } = req.query;
-  // console.log(receiverId,"reciver id is here");
   try {
     if (!receiverId) return;
     const messages = await prisma.messages.findMany({
@@ -294,7 +291,6 @@ export const getGroupMessages = async (req: Request, res: Response) => {
     });
 
     const users = memebers?.groupMembers.map((memebers) => memebers);
-    // console.log(users);
     return res.status(200).json({
       success: true,
       message: "Messages fetched successfully",
@@ -324,7 +320,6 @@ export const sendMessage = async (req: Request, res: Response) => {
     replyMessageSenderId,
   } = req.body;
   try {
-    console.log(clientMessageId, text, senderId, receiverId, type, "fghfg");
     if (!senderId || !receiverId) {
       return res.status(400).json({
         success: false,
@@ -452,7 +447,6 @@ export const sendMessage = async (req: Request, res: Response) => {
       chatUser: conversationId?.currentUser, // sender
       currentUser: conversationId?.chatUser, // receiver
     };
-    // console.log("replyed message is", replyMessage);
     io.to(String(senderSocketId)).emit("newMessage", {
       clientMessageId,
       response,
@@ -472,25 +466,7 @@ export const sendMessage = async (req: Request, res: Response) => {
         id: replyMessage?.id,
       },
     });
-    console.log({
-      clientMessageId,
-      response,
-      lastMessageId: response?.id,
-      conversationId: senderConversation,
-      targetChatUserId: receiverId,
-      files: reponseFiles,
-      type,
-      replyMessage: {
-        text: replyMessage?.text,
-        file:
-          replyMessage?.file && replyMessage?.file?.length > 0
-            ? replyMessage?.file
-            : null,
-        createdAt: replyMessage?.createdAt,
-        id: replyMessage?.id,
-        // replyMessageSenderId: replyMessage?.replyMessageSenderId,
-      },
-    });
+    
     io.to(String(receiverSocketId)).emit("newMessage", {
       clientMessageId,
       response,
@@ -670,21 +646,10 @@ export const editMessageFile = async (req: Request, res: Response) => {
   } = req.body;
   const files = req?.files as Express.Multer.File[];
   try {
-    console.log(
-      messageId,
-      senderId,
-      newText,
-      receiverId,
-      type,
-      deletedFileId,
-      groupId,
-      fileExist,
-      "new text",
-    );
+  
     if (!messageId || !senderId) {
       throw new Error("Required data missing");
     }
-    console.log(files);
     if (!newText && files.length == 0 && !fileExist) {
       throw new Error("Edited messages can't be empty");
     }
@@ -696,7 +661,6 @@ export const editMessageFile = async (req: Request, res: Response) => {
       if (!message) {
         throw new Error("Message not found");
       }
-      console.log(message);
       if (Number(message.senderId) !== Number(senderId)) {
         throw new Error("Unauthorized edit");
       }
@@ -711,7 +675,6 @@ export const editMessageFile = async (req: Request, res: Response) => {
         .map((id) => Number(id))
         .filter((id) => !isNaN(id) && id > 0);
 
-      console.log(deletedFiles, "final deleted ids");
 
       if (deletedFiles.length > 0) {
         await Promise.all(
@@ -726,7 +689,6 @@ export const editMessageFile = async (req: Request, res: Response) => {
 
       let createFiles = null;
       if (Array.isArray(files) && files.length > 0) {
-        console.log("run in deleted", deletedFileId);
         createFiles = await Promise.all(
           files?.map(
             async (f) =>
@@ -761,7 +723,6 @@ export const editMessageFile = async (req: Request, res: Response) => {
           : `${receiverId}-${senderId}`;
 
       // const imagefile = allFile?.map((f) => f.isDeleted !== true);
-      console.log(allFile, "all files");
       io.to(roomId).emit("editMessage", {
         messageId,
         newText,
@@ -782,12 +743,10 @@ export const editMessageFile = async (req: Request, res: Response) => {
       if (Number(message?.userId) !== Number(senderId)) {
         throw new Error("Unauthorized edit");
       }
-      console.log("files", files);
       const groupMessage = await prisma.groupMessage.findUnique({
         where: { id: Number(messageId) },
       });
       let createGroupFile = null;
-      console.log("group message sis", groupMessage);
       if (files && files?.length !== 0) {
         createGroupFile = await Promise.all(
           files?.map(
@@ -803,14 +762,12 @@ export const editMessageFile = async (req: Request, res: Response) => {
           ),
         );
       }
-      console.log(createGroupFile, "created ");
       const deletedFiles = (
         Array.isArray(deletedFileId) ? deletedFileId : [deletedFileId]
       )
         .map((id) => Number(id))
         .filter((id) => !isNaN(id) && id > 0);
 
-      console.log(deletedFiles, "final deleted ids");
 
       if (deletedFiles.length > 0) {
         await Promise.all(
@@ -851,7 +808,6 @@ export const editMessageFile = async (req: Request, res: Response) => {
       });
 
       groupChat.group.groupMembers.forEach((user: any) => {
-        console.log("run");
         const socketId = onlineUsers[user.userId];
         if (socketId) {
           io.to(socketId).emit("editMessage", {
