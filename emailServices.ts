@@ -12,7 +12,9 @@ transporter.verify((error) => {
   if (error) {
     console.log("Email transport error:", error);
   } else {
-    console.log("Email is ready to send");
+    console.log(
+      `Email is ready to send  ${process.env.GOOGLE_APP_PASSWORD} ${process.env.USER_EMAIL}`,
+    );
   }
 });
 
@@ -98,7 +100,14 @@ export const sendVerifyEmail = async (
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log("OTP email sent:", info.messageId);
+
+    console.log({
+      messageId: info.messageId,
+      accepted: info.accepted,
+      rejected: info.rejected,
+      response: info.response,
+    });
+
     return true;
   } catch (error) {
     console.error("Error sending OTP email:", error);

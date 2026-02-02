@@ -42,7 +42,7 @@ export const signup = async (req: Request, res: Response) => {
     const subject = "Your OTP Code for Email Verification";
     const warningMessage =
       "This is an email verification code. It will expire in";
-    sendVerifyEmail(email, code, subject, warningMessage);
+    await sendVerifyEmail(email, code, subject, warningMessage);
     console.log("save");
 
     return res.status(201).json({
@@ -274,7 +274,7 @@ export const forgetPassword = async (req: Request, res: Response) => {
     const subject = "Forgot Password OTP";
     const warningMessage =
       "Use this code to forget your password. It will expire in";
-    sendVerifyEmail(email, otp, subject, warningMessage);
+    await sendVerifyEmail(email, otp, subject, warningMessage);
     return res.status(200).json({
       success: true,
       message: "We have sent a code to your email please check",

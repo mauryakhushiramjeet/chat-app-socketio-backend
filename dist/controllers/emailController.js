@@ -74,7 +74,7 @@ export const resentOtpEmail = async (req, res) => {
         });
         const subject = "Resend OTP Code for Email Verification";
         const warningMessage = "This is an email verification code. It will expire in";
-        sendVerifyEmail(email, otp, subject, warningMessage);
+        await sendVerifyEmail(email, otp, subject, warningMessage);
         return res.status(200).json({
             success: true,
             message: "We have sent a code to your email please check",
@@ -110,7 +110,7 @@ export const forgetPasswordEmailVerify = async (req, res) => {
         });
         const subject = "Email verification for forget password";
         const warningMessage = "This is an email verification code for forget password. It will expire in";
-        sendVerifyEmail(email, otp, subject, warningMessage);
+        await sendVerifyEmail(email, otp, subject, warningMessage);
         return res.status(200).json({
             success: true,
             message: "We have sent a code to your email please check",
@@ -146,7 +146,7 @@ export const resendMailForgetPassword = async (req, res) => {
         });
         const subject = "Resend OTP Code for Forget Password";
         const warningMessage = "This is an forget password code. It will expire in";
-        sendVerifyEmail(email, otp, subject, warningMessage);
+        await sendVerifyEmail(email, otp, subject, warningMessage);
         return res.status(200).json({
             success: true,
             message: "We have sent a code to your email please check",
