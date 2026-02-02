@@ -44,6 +44,6 @@
     // "moduleDetection": "force",
     "skipLibCheck": true
   },
-  "include": ["**/*.ts"],
+  "include": ["server.ts", "route.ts", "lib/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
