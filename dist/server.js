@@ -1,10 +1,10 @@
 import "dotenv/config";
 import express from "express";
-import router from "./route";
+import router from "./route.js";
 import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
-import { prisma } from "./lib/prisma";
+import { prisma } from "./lib/prisma.js";
 const PORT = process.env.PORT || 8050;
 const app = express();
 app.use(cors({ origin: process.env.FRONTEND_URL }));

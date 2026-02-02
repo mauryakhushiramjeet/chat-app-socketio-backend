@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { getAllConverSationUsers, getAllFriends, getCurrentUser, login, resetPassword, signup, updateProfile, } from "./controllers/userController";
-import upload from "./lib/cloudinary";
+import { getAllConverSationUsers, getAllFriends, getCurrentUser, login, resetPassword, signup, updateProfile, } from "./controllers/userController.js";
+import upload from "./lib/cloudinary.js";
 import { editMessageFile, 
 // addMessage,
-getAllMyMessages, getGroupMessages, getMessages, sendGroupMessage, sendMessage, } from "./controllers/messageController";
-import { createGroup, updatelastMessageId, } from "./controllers/groupController";
-import { sidebarChatList } from "./controllers/sidebarController";
-import emailOtpVerify, { forgetPasswordEmailVerify, resendMailForgetPassword, } from "./controllers/emailController";
+getAllMyMessages, getGroupMessages, getMessages, sendGroupMessage, sendMessage, } from "./controllers/messageController.js";
+import { createGroup, updatelastMessageId, } from "./controllers/groupController.js";
+import { sidebarChatList } from "./controllers/sidebarController.js";
+import emailOtpVerify, { forgetPasswordEmailVerify, resendMailForgetPassword, } from "./controllers/emailController.js";
 const router = Router();
 router.post("/signup", upload.single("image"), signup);
 router.post("/login", login);

@@ -1,5 +1,5 @@
-import { prisma } from "../lib/prisma";
-import { io, onlineUsers } from "../server";
+import { prisma } from "../lib/prisma.js";
+import { io, onlineUsers } from "../server.js";
 export const createGroup = async (req, res) => {
     const { groupName, selectedMembers, groupCreatedUserId } = req.body;
     console.log(selectedMembers);

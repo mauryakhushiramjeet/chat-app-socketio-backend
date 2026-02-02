@@ -1,5 +1,5 @@
-import { sendVerifyEmail } from "../emailServices";
-import { prisma } from "../lib/prisma";
+import { sendVerifyEmail } from "../emailServices.js";
+import { prisma } from "../lib/prisma.js";
 const emailOtpVerify = async (req, res) => {
     const { email, otp } = req.body;
     console.log(email, otp);

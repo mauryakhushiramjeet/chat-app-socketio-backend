@@ -1,4 +1,4 @@
-import { prisma } from "../lib/prisma";
+import { prisma } from "../lib/prisma.js";
 export const sidebarChatList = async (req, res) => {
     const { loggedInUserId } = req.query;
     // console.log("in srver", loggedInUserId);

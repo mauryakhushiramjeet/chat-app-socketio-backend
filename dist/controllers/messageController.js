@@ -1,5 +1,5 @@
-import { prisma } from "../lib/prisma";
-import { io, onlineUsers } from "../server";
+import { prisma } from "../lib/prisma.js";
+import { io, onlineUsers } from "../server.js";
 export const getMessages = async (req, res) => {
     const { senderId, receiverId, lastMessageId } = req.query; // <-- use query
     try {

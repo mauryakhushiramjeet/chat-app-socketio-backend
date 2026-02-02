@@ -1,8 +1,8 @@
 import bcrypt from "bcrypt";
-import { prisma } from "../lib/prisma";
-import { io, onlineUsers } from "../server";
-import { createToken } from "../authMiddleware/createToken";
-import { sendVerifyEmail } from "../emailServices";
+import { prisma } from "../lib/prisma.js";
+import { io, onlineUsers } from "../server.js";
+import { createToken } from "../authMiddleware/createToken.js";
+import { sendVerifyEmail } from "../emailServices.js";
 export const signup = async (req, res) => {
     try {
         const { name, email, password } = req.body;

@@ -1,6 +1,6 @@
-import { prisma } from "../lib/prisma";
+import { prisma } from "../lib/prisma.js";
 import type { Request, Response } from "express";
-import { io, onlineUsers } from "../server";
+import { io, onlineUsers } from "../server.js";
 
 export const getMessages = async (req: Request, res: Response) => {
   const { senderId, receiverId, lastMessageId } = req.query; // <-- use query

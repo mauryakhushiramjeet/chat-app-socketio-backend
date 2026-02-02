@@ -1,4 +1,4 @@
-import { prisma } from "../lib/prisma";
+import { prisma } from "../lib/prisma.js";
 import type { Request, Response } from "express";
 export const sidebarChatList = async (req: Request, res: Response) => {
   const { loggedInUserId } = req.query;
