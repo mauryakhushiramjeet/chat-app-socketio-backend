@@ -23,9 +23,11 @@ import {
   updatelastMessageId,
 } from "./controllers/groupController.js";
 import { sidebarChatList } from "./controllers/sidebarController.js";
-import emailOtpVerify, {
+import  {
+  emailOtpVerify,
   forgetPasswordEmailVerify,
   resendMailForgetPassword,
+  resendMailVerify,
 } from "./controllers/emailController.js";
 
 const router = Router();
@@ -50,5 +52,6 @@ router.put("/updateMemberLastMsgId", updatelastMessageId);
 router.put("/updateMessageFile", upload.array("file"), editMessageFile);
 router.post("/resendMailForgetPassword", resendMailForgetPassword);
 router.post("/forgetPassword_EmailVerify",forgetPasswordEmailVerify)
+router.post("/resendMail",resendMailVerify)
 router.post("/resetPassword",resetPassword)
 export default router;
