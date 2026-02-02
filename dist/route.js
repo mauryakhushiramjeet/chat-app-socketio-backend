@@ -1,0 +1,31 @@
+import { Router } from "express";
+import { getAllConverSationUsers, getAllFriends, getCurrentUser, login, resetPassword, signup, updateProfile, } from "./controllers/userController";
+import upload from "./lib/cloudinary";
+import { editMessageFile, 
+// addMessage,
+getAllMyMessages, getGroupMessages, getMessages, sendGroupMessage, sendMessage, } from "./controllers/messageController";
+import { createGroup, updatelastMessageId, } from "./controllers/groupController";
+import { sidebarChatList } from "./controllers/sidebarController";
+import emailOtpVerify, { forgetPasswordEmailVerify, resendMailForgetPassword, } from "./controllers/emailController";
+const router = Router();
+router.post("/signup", upload.single("image"), signup);
+router.post("/login", login);
+router.get("/getFriends/:id", getAllFriends);
+router.get("/logedInUser/:id", getCurrentUser);
+// router.post("/addMessage", addMessage);
+router.post("/addMessage", upload.array("file"), sendMessage);
+router.post("/addGroupMessage", upload.array("file"), sendGroupMessage);
+router.get("/getMessages", getMessages);
+router.get("/userConversations", getAllConverSationUsers);
+router.get("/getAllMyMessages", getAllMyMessages);
+router.put("/updateProfile", upload.single("image"), updateProfile);
+router.post("/createGroup", upload.single("image"), createGroup);
+router.post("/verifyEmailOtp", emailOtpVerify);
+router.get("/getSidebarChatList", sidebarChatList);
+router.get("/getGroupMessages", getGroupMessages);
+router.put("/updateMemberLastMsgId", updatelastMessageId);
+router.put("/updateMessageFile", upload.array("file"), editMessageFile);
+router.post("/resendMailForgetPassword", resendMailForgetPassword);
+router.post("/forgetPassword_EmailVerify", forgetPasswordEmailVerify);
+router.post("/resetPassword", resetPassword);
+export default router;

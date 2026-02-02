@@ -405,6 +405,7 @@ export const sendMessage = async (req: Request, res: Response) => {
       },
       include: {
         chatUser: true,
+        currentUser:true
       },
     });
 
@@ -582,7 +583,7 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
       },
     });
     let reponseFiles = null;
-    if (files || files?.length > 0) {
+    if (files&& files?.length > 0) {
       const createdFile = await Promise.all(
         files.map((file) =>
           prisma.file.create({
