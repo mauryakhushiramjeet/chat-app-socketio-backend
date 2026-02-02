@@ -7,8 +7,8 @@ import {
   resetPassword,
   signup,
   updateProfile,
-} from "./controllers/userController";
-import upload from "./lib/cloudinary";
+} from "./controllers/userController.js";
+import upload from "./lib/cloudinary.js";
 import {
   editMessageFile,
   // addMessage,
@@ -17,16 +17,16 @@ import {
   getMessages,
   sendGroupMessage,
   sendMessage,
-} from "./controllers/messageController";
+} from "./controllers/messageController.js";
 import {
   createGroup,
   updatelastMessageId,
-} from "./controllers/groupController";
-import { sidebarChatList } from "./controllers/sidebarController";
+} from "./controllers/groupController.js";
+import { sidebarChatList } from "./controllers/sidebarController.js";
 import emailOtpVerify, {
   forgetPasswordEmailVerify,
   resendMailForgetPassword,
-} from "./controllers/emailController";
+} from "./controllers/emailController.js";
 
 const router = Router();
 
