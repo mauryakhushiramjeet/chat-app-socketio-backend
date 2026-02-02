@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon --exec tsx server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/server.ts",
     "postinstall": "npx prisma generate"
   },
   "keywords": [],
