@@ -1,27 +1,31 @@
 import nodemailer from "nodemailer";
 const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.USER_EMAIL,
-        pass: process.env.GOOGLE_APP_PASSWORD,
-    },
+  service: "gmail",
+  auth: {
+    user: process.env.USER_EMAIL,
+    pass: process.env.GOOGLE_APP_PASSWORD,
+  },
 });
 transporter.verify((error) => {
-    if (error) {
-        console.log("Email transport error:", error);
-    }
-    else {
-        console.log("Email is ready to send");
-    }
+  if (error) {
+    console.log("Email transport error:", error);
+  } else {
+    console.log("Email is ready to send");
+  }
 });
 // Function to send OTP email
-export const sendVerifyEmail = async (toEmail, verificationCode, subject, warningMessage) => {
-    try {
-        const mailOptions = {
-            from: process.env.USER_EMAIL,
-            to: toEmail,
-            subject: `${subject}`, // Keeping your exact subject
-            html: `
+export const sendVerifyEmail = async (
+  toEmail,
+  verificationCode,
+  subject,
+  warningMessage,
+) => {
+  try {
+    const mailOptions = {
+      from: process.env.USER_EMAIL,
+      to: toEmail,
+      subject: `${subject}`, // Keeping your exact subject
+      html: `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -88,13 +92,13 @@ export const sendVerifyEmail = async (toEmail, verificationCode, subject, warnin
     </body>
     </html>
   `,
-        };
-        const info = await transporter.sendMail(mailOptions);
-        console.log("OTP email sent:", info.messageId);
-        return true;
-    }
-    catch (error) {
-        console.error("Error sending OTP email:", error);
-        return false;
-    }
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("OTP email sent:", info.messageId);
+    return true;
+  } catch (error) {
+    console.error("Error sending OTP email:", error);
+    return false;
+  }
 };
