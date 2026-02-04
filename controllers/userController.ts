@@ -171,6 +171,7 @@ export const getAllFriends = async (req: Request, res: Response) => {
         id: {
           not: parseInt(id),
         },
+        emailVerify: true,
       },
     });
     return res
@@ -212,6 +213,9 @@ export const updateProfile = async (req: Request, res: Response) => {
         message: "Name, bout of user and user id is required",
       });
     }
+    const userExist = await prisma.user.findUnique({
+      where: { id: Number(userId) },
+    });
     const updatedUser = await prisma.user.update({
       where: { id: Number(userId) },
       data: {
@@ -224,9 +228,10 @@ export const updateProfile = async (req: Request, res: Response) => {
       const socketId = onlineUsers[user];
       io.to(String(socketId)).emit("profile:updated", {
         userId: updatedUser.id,
-        image: updatedUser.image,
+        image: updatedUser.image ? updatedUser.image : userExist?.image,
         name: updatedUser.name,
         about: updatedUser.about,
+        isEmailVerify: updatedUser?.emailVerify,
       });
     });
     return res.status(200).json({
@@ -235,9 +240,9 @@ export const updateProfile = async (req: Request, res: Response) => {
       user: {
         id: updatedUser.id,
         name: updatedUser.name,
-        email: updatedUser.email,
-        image: updatedUser.image,
+        image: updatedUser.image ? updatedUser.image : userExist?.image,
         about: updatedUser?.about,
+        isEmailVerify: updatedUser?.emailVerify,
       },
     });
   } catch (error) {

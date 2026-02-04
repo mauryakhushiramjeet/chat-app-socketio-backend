@@ -177,7 +177,7 @@ export const resendMailForgetPassword = async (req: Request, res: Response) => {
 };
 export const resendMailVerify = async (req: Request, res: Response) => {
   const { email } = req.body;
-  console.log("email in forget resend", email);
+  console.log("resend email verify", email);
   try {
     if (!email) {
       return res

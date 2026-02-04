@@ -664,14 +664,15 @@ io.on("connection", (socket) => {
     );
     if (disconnectedUserId) {
       delete onlineUsers[disconnectedUserId];
+
+      const userUpadted = await prisma.user.update({
+        where: { id: Number(userId) },
+        data: {
+          LastActiveAt: new Date(),
+        },
+      });
+      io.emit("user-disconnected", disconnectedUserId);
     }
-    const userUpadted = await prisma.user.update({
-      where: { id: Number(userId) },
-      data: {
-        LastActiveAt: new Date(),
-      },
-    });
-    io.emit("user-disconnected", disconnectedUserId);
   });
 });
 server.listen(PORT, () => {

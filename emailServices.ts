@@ -1,22 +1,22 @@
 import nodemailer from "nodemailer";
 
-// const transporter = nodemailer.createTransport({
-//   service: "gmail",
-//   auth: {
-//     user: process.env.USER_EMAIL,
-//     pass: process.env.GOOGLE_APP_PASSWORD,
-//   },
-// });
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+  service: "gmail",
   auth: {
     user: process.env.USER_EMAIL,
     pass: process.env.GOOGLE_APP_PASSWORD,
   },
-  connectionTimeout: 60_000,
 });
+// const transporter = nodemailer.createTransport({
+//   host: "smtp.gmail.com",
+//   port: 465,
+//   secure: true,
+//   auth: {
+//     user: process.env.USER_EMAIL,
+//     pass: process.env.GOOGLE_APP_PASSWORD,
+//   },
+//   connectionTimeout: 60_000,
+// });
 
 transporter.verify((error) => {
   if (error) {
@@ -108,15 +108,8 @@ export const sendVerifyEmail = async (
     </html>
   `,
     };
-
     const info = await transporter.sendMail(mailOptions);
-
-    console.log({
-      messageId: info.messageId,
-      accepted: info.accepted,
-      rejected: info.rejected,
-      response: info.response,
-    });
+    console.log("Message sent:", info.response);
 
     return true;
   } catch (error) {
