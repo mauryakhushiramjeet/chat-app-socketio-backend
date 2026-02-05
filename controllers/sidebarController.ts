@@ -63,7 +63,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
           lastMessageId: null,
           lastMessageCreatedAt: null,
           status: null,
-          messageSenderId:null
+          messageSenderId: null,
         };
       }
       if (lastMessage?.deletedByMeId === Number(loggedInUserId)) {
@@ -89,7 +89,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
           lastMessage: newLastMessage ? newLastMessage?.text : "",
           lastMessageId: newLastMessage ? newLastMessage.id : null,
           status: newLastMessage ? newLastMessage?.status : null,
-          messageSenderId:newLastMessage?newLastMessage?.senderId:null
+          messageSenderId: newLastMessage ? newLastMessage?.senderId : null,
         };
       }
       if (lastMessage?.deletedForAll === true) {
@@ -98,10 +98,14 @@ export const sidebarChatList = async (req: Request, res: Response) => {
           lastMessage: "This message was deleted",
           lastMessageId: null,
           status: lastMessage?.status,
-          messageSenderId:lastMessage?lastMessage?.senderId:null
+          messageSenderId: lastMessage ? lastMessage?.senderId : null,
         };
       }
-      return { ...chatConversation, status: lastMessage?.status,messageSenderId:lastMessage?.senderId};
+      return {
+        ...chatConversation,
+        status: lastMessage?.status,
+        messageSenderId: lastMessage?.senderId,
+      };
     });
     // console.log("status", updatedConversation);
     const formatedChatConversation = updatedConversation.map((conversation) => {
@@ -114,7 +118,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
         lastMessageCreatedAt: conversation?.lastMessageCreatedAt,
         lastMessageId: conversation.lastMessageId,
         status: conversation.status,
-        messageSenderId:conversation?.messageSenderId,
+        messageSenderId: conversation?.messageSenderId,
         chatUser: isLoggedUserIschatUser
           ? {
               id: conversation.currentUser?.id,
@@ -146,6 +150,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
             createdAt: true,
             deletedByMeId: true,
             deletedForAll: true,
+            userId: true,
           },
           orderBy: {
             createdAt: "desc",
@@ -178,6 +183,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
           lastMessage: "",
           lastMessageId: null,
           lastMessageCreatedAt: null,
+          messageSenderId: null,
         };
       }
 
@@ -190,6 +196,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
           lastMessage: "This message was deleted",
           lastMessageId: null,
           lastMessageCreatedAt: lastMessage.createdAt ?? null,
+          messageSenderId: lastMessage?.userId?? null,
         };
       }
 
@@ -211,6 +218,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
             : "Start conversation",
           lastMessageId: previousMessage?.id ?? null,
           lastMessageCreatedAt: previousMessage?.createdAt ?? null,
+          messageSenderId: previousMessage?.userId?? null,
         };
       }
 
@@ -223,6 +231,7 @@ export const sidebarChatList = async (req: Request, res: Response) => {
         lastMessage: lastMessage?.text ?? "Start conversation",
         lastMessageId: lastMessage?.id ?? null,
         lastMessageCreatedAt: lastMessage?.createdAt ?? null,
+        messageSenderId: lastMessage?.userId ?? null,
       };
     });
 

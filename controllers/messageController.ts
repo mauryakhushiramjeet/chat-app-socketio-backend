@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import type { Request, Response } from "express";
 import { io, onlineUsers } from "../server.js";
+import { Socket } from "socket.io";
 
 export const getMessages = async (req: Request, res: Response) => {
   const { senderId, receiverId, lastMessageId } = req.query; // <-- use query
@@ -405,11 +406,31 @@ export const sendMessage = async (req: Request, res: Response) => {
       },
       include: {
         chatUser: true,
-        currentUser:true
+        currentUser: true,
       },
     });
 
     if (conversation) {
+      if (
+        Number(conversation?.chatUserId) !== Number(receiverId) &&
+        Number(conversation?.currentUserId) !== Number(senderId)
+      ) {
+        console.log(
+          Number(conversation?.chatUserId),
+          Number(receiverId),
+          "resciver",
+          Number(conversation?.currentUserId),
+          Number(senderId),
+          "sender id check",
+        );
+        await prisma.chatConversation.update({
+          where: { id: Number(conversation?.id) },
+          data: {
+            chatUserId: Number(receiverId),
+            currentUserId: Number(senderId),
+          },
+        });
+      }
       await prisma.chatConversation.update({
         where: { id: Number(conversation?.id) },
         data: {
@@ -443,6 +464,7 @@ export const sendMessage = async (req: Request, res: Response) => {
       chatUser: conversationId?.chatUser,
       currentUser: conversationId?.currentUser,
     };
+    console.log(senderConversation, "senderisConversation");
     const receiverConversation = {
       ...conversationId,
       chatUser: conversationId?.currentUser, // sender
@@ -467,7 +489,7 @@ export const sendMessage = async (req: Request, res: Response) => {
         id: replyMessage?.id,
       },
     });
-    
+
     io.to(String(receiverSocketId)).emit("newMessage", {
       clientMessageId,
       response,
@@ -512,6 +534,7 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
     replyMessageSenderId,
   } = req.body;
   try {
+    console.log(messageSenderId, "mesaeg senderId");
     if (message.trim() === "" && files?.length === 0) {
       return res.status(400).json({
         success: false,
@@ -571,6 +594,7 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
         userId: Number(messageSenderId),
         replyToMessageId: Number(replyToMessageId),
         replyMessageSenderId: Number(replyMessageSenderId),
+        
       },
       include: {
         sender: {
@@ -583,7 +607,7 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
       },
     });
     let reponseFiles = null;
-    if (files&& files?.length > 0) {
+    if (files && files?.length > 0) {
       const createdFile = await Promise.all(
         files.map((file) =>
           prisma.file.create({
@@ -600,24 +624,27 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
     }
     group.groupMembers.map((user) => {
       const socketId = onlineUsers[user?.userId];
-      io.to(String(socketId)).emit("receiveGropMessage", {
-        groupId: `group-${groupId}`,
-        message,
-        lastMessageId: createMessage?.id,
-        sender: createMessage?.sender,
-        file: reponseFiles,
-        replyMessageSenderId: createMessage?.replyMessageSenderId,
-        replyMessage: {
-          text: replyMessage?.text,
-          file:
-            replyMessage?.file && replyMessage?.file?.length > 0
-              ? replyMessage?.file
-              : null,
-          createdAt: replyMessage?.createdAt,
-          id: replyMessage?.id,
-          // replyMessageSenderId: replyMessage?.replyMessageSenderId,
-        },
-      });
+      if (socketId) {
+        io.to(String(socketId)).emit("receiveGropMessage", {
+          groupId: `group-${groupId}`,
+          message,
+          lastMessageId: createMessage?.id,
+          sender: createMessage?.sender,
+          file: reponseFiles,
+          messageSenderId,
+          replyMessageSenderId: createMessage?.replyMessageSenderId,
+          replyMessage: {
+            text: replyMessage?.text,
+            file:
+              replyMessage?.file && replyMessage?.file?.length > 0
+                ? replyMessage?.file
+                : null,
+            createdAt: replyMessage?.createdAt,
+            id: replyMessage?.id,
+            // replyMessageSenderId: replyMessage?.replyMessageSenderId,
+          },
+        });
+      }
     });
     return res.status(201).json({
       success: true,
@@ -647,7 +674,6 @@ export const editMessageFile = async (req: Request, res: Response) => {
   } = req.body;
   const files = req?.files as Express.Multer.File[];
   try {
-  
     if (!messageId || !senderId) {
       throw new Error("Required data missing");
     }
@@ -675,7 +701,6 @@ export const editMessageFile = async (req: Request, res: Response) => {
       )
         .map((id) => Number(id))
         .filter((id) => !isNaN(id) && id > 0);
-
 
       if (deletedFiles.length > 0) {
         await Promise.all(
@@ -768,7 +793,6 @@ export const editMessageFile = async (req: Request, res: Response) => {
       )
         .map((id) => Number(id))
         .filter((id) => !isNaN(id) && id > 0);
-
 
       if (deletedFiles.length > 0) {
         await Promise.all(

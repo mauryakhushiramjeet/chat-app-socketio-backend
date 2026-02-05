@@ -92,12 +92,12 @@ io.on("connection", (socket) => {
         });
       });
     } else {
-      const roomId =
-        senderId < receiverId
-          ? `${senderId}-${receiverId}`
-          : `${receiverId}-${senderId}`;
-
-      socket.to(roomId).emit("userStopTyping", {
+      // const roomId =
+      //   senderId < receiverId
+      //     ? `${senderId}-${receiverId}`
+      //     : `${receiverId}-${senderId}`;
+      const reciversSocketId = onlineUsers[receiverId];
+      socket.to(reciversSocketId).emit("userStopTyping", {
         senderId,
         receiverId,
         type,
@@ -107,7 +107,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("status:delivered", async ({ messageId, conversationId }) => {
-    console.log("conversation is mainderf kehriher jherhgr", conversationId);
+    // console.log("conversation is mainderf kehriher jherhgr", conversationId);
     const message = await prisma.messages.findUnique({
       where: { id: messageId },
     });
