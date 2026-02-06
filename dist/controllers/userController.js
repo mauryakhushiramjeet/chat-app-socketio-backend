@@ -36,7 +36,6 @@ export const signup = async (req, res) => {
         const subject = "Your OTP Code for Email Verification";
         const warningMessage = "This is an email verification code. It will expire in";
         await sendVerifyEmail(email, code, subject, warningMessage);
-        console.log("save");
         return res.status(201).json({
             success: true,
             message: "We have sent a code to your email please check",
@@ -60,7 +59,6 @@ export const signup = async (req, res) => {
 };
 export const getAllConverSationUsers = async (req, res) => {
     const { loggedInUserId } = req.query;
-    // console.log("loged userid  for conversation", loggedInUserId);
     try {
         const conversations = await prisma.chatConversation.findMany({
             where: {
@@ -150,7 +148,6 @@ export const login = async (req, res) => {
 };
 export const getAllFriends = async (req, res) => {
     const { id } = req.params;
-    console.log(id);
     try {
         if (!id) {
             return res
@@ -175,7 +172,6 @@ export const getAllFriends = async (req, res) => {
 };
 export const getCurrentUser = async (req, res) => {
     const { id } = req.params;
-    console.log(id);
     try {
         if (!id) {
             return res
@@ -196,7 +192,6 @@ export const getCurrentUser = async (req, res) => {
 };
 export const updateProfile = async (req, res) => {
     const { userId, name, about } = req.body;
-    console.log("user id is", typeof userId, name, about);
     try {
         if (!userId || !name || !about) {
             return res.status(400).json({

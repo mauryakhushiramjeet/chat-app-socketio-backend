@@ -346,6 +346,13 @@ export const sendMessage = async (req: Request, res: Response) => {
         message: "Sender or Receiver does not exist",
       });
     }
+    const senderDetails = await prisma.user.findUnique({
+      where: { id: Number(senderId) },
+      select: {
+        image: true,
+        name: true,
+      },
+    });
     let replyMessage = null;
 
     const replyId = Number(replyToMessageId);
@@ -415,14 +422,6 @@ export const sendMessage = async (req: Request, res: Response) => {
         Number(conversation?.chatUserId) !== Number(receiverId) &&
         Number(conversation?.currentUserId) !== Number(senderId)
       ) {
-        console.log(
-          Number(conversation?.chatUserId),
-          Number(receiverId),
-          "resciver",
-          Number(conversation?.currentUserId),
-          Number(senderId),
-          "sender id check",
-        );
         await prisma.chatConversation.update({
           where: { id: Number(conversation?.id) },
           data: {
@@ -464,7 +463,6 @@ export const sendMessage = async (req: Request, res: Response) => {
       chatUser: conversationId?.chatUser,
       currentUser: conversationId?.currentUser,
     };
-    console.log(senderConversation, "senderisConversation");
     const receiverConversation = {
       ...conversationId,
       chatUser: conversationId?.currentUser, // sender
@@ -509,6 +507,15 @@ export const sendMessage = async (req: Request, res: Response) => {
         // replyMessageSenderId: replyMessage?.replyMessageSenderId,
       },
     });
+    io.to(receiverSocketId).emit("receiveNotification", {
+      senderId: senderId,
+      senderName: senderDetails?.name,
+      senderImage: senderDetails?.image,
+      message: req?.file ? "Sent a file" : text,
+      chatType: "chat",
+      messageId: message?.id,
+    });
+
     return res.status(201).json({
       success: true,
       message: "message sended successfully",
@@ -534,7 +541,6 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
     replyMessageSenderId,
   } = req.body;
   try {
-    console.log(messageSenderId, "mesaeg senderId");
     if (message.trim() === "" && files?.length === 0) {
       return res.status(400).json({
         success: false,
@@ -551,6 +557,8 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
             userId: true,
           },
         },
+        image: true,
+        name: true,
       },
     });
     if (!group) {
@@ -594,7 +602,6 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
         userId: Number(messageSenderId),
         replyToMessageId: Number(replyToMessageId),
         replyMessageSenderId: Number(replyMessageSenderId),
-        
       },
       include: {
         sender: {
@@ -643,6 +650,16 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
             id: replyMessage?.id,
             // replyMessageSenderId: replyMessage?.replyMessageSenderId,
           },
+        });
+        io.to(socketId).emit("receiveNotification", {
+          senderId: createMessage?.sender?.id,
+          senderName: createMessage?.sender?.name,
+          senderImage: group?.image,
+          message: req?.file ? "Sent a file" : message,
+          chatType: "group",
+          messageId: message?.id,
+          groupId,
+          groupName: group.name,
         });
       }
     });

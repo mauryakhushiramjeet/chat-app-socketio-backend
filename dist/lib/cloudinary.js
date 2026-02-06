@@ -9,7 +9,6 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
     cloudinary,
     params: async (req, file) => {
-        console.log(file, "this is file");
         let resourceType = "raw";
         if (file.mimetype.startsWith("image/")) {
             resourceType = "image";

@@ -28,7 +28,6 @@ transporter.verify((error) => {
   }
 });
 
-// Function to send OTP email
 export const sendVerifyEmail = async (
   toEmail: string,
   verificationCode: string,

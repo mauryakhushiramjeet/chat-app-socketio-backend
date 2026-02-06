@@ -43,7 +43,6 @@ export const signup = async (req: Request, res: Response) => {
     const warningMessage =
       "This is an email verification code. It will expire in";
     await sendVerifyEmail(email, code, subject, warningMessage);
-    console.log("save");
 
     return res.status(201).json({
       success: true,
@@ -67,7 +66,6 @@ export const signup = async (req: Request, res: Response) => {
 };
 export const getAllConverSationUsers = async (req: Request, res: Response) => {
   const { loggedInUserId } = req.query;
-  // console.log("loged userid  for conversation", loggedInUserId);
   try {
     const conversations = await prisma.chatConversation.findMany({
       where: {
@@ -159,7 +157,6 @@ export const login = async (req: Request, res: Response) => {
 
 export const getAllFriends = async (req: Request, res: Response) => {
   const { id } = req.params;
-  console.log(id);
   try {
     if (!id) {
       return res
@@ -184,7 +181,6 @@ export const getAllFriends = async (req: Request, res: Response) => {
 };
 export const getCurrentUser = async (req: Request, res: Response) => {
   const { id } = req.params;
-  console.log(id);
   try {
     if (!id) {
       return res
@@ -205,7 +201,6 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 
 export const updateProfile = async (req: Request, res: Response) => {
   const { userId, name, about } = req.body;
-  console.log("user id is", typeof userId, name, about);
   try {
     if (!userId || !name || !about) {
       return res.status(400).json({

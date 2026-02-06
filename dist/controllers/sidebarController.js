@@ -1,7 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 export const sidebarChatList = async (req, res) => {
     const { loggedInUserId } = req.query;
-    // console.log("in srver", loggedInUserId);
     try {
         if (!loggedInUserId) {
             return res.status(400).json({
@@ -65,7 +64,6 @@ export const sidebarChatList = async (req, res) => {
                         msg.receiverId === chatConversation.currentUserId))
                     .filter((msg) => msg.deletedByMeId !== Number(loggedInUserId))
                     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-                // console.log("chat message is here", chatMessages, "this");
                 const newLastMessage = chatMessages.length
                     ? chatMessages[chatMessages.length - 1]
                     : null;
@@ -88,7 +86,6 @@ export const sidebarChatList = async (req, res) => {
             }
             return { ...chatConversation, status: lastMessage?.status, messageSenderId: lastMessage?.senderId };
         });
-        // console.log("status", updatedConversation);
         const formatedChatConversation = updatedConversation.map((conversation) => {
             const isLoggedUserIschatUser = conversation.chatUser?.id === Number(loggedInUserId);
             return {
@@ -202,7 +199,6 @@ export const sidebarChatList = async (req, res) => {
                 lastMessageCreatedAt: lastMessage?.createdAt ?? null,
             };
         });
-        // console.log(formatedGroupConversation, "group");
         const sidebarchatsAndGroupConverstions = [
             ...formatedChatConversation,
             ...formatedGroupConversation,

@@ -2,7 +2,6 @@ import { sendVerifyEmail } from "../emailServices.js";
 import { prisma } from "../lib/prisma.js";
 const emailOtpVerify = async (req, res) => {
     const { email, otp } = req.body;
-    console.log(email, otp);
     try {
         if (!email || !otp) {
             return res
@@ -89,7 +88,6 @@ export const resentOtpEmail = async (req, res) => {
 };
 export const forgetPasswordEmailVerify = async (req, res) => {
     const { email } = req.body;
-    console.log(email, "in forget");
     try {
         if (!email) {
             return res
@@ -125,7 +123,6 @@ export const forgetPasswordEmailVerify = async (req, res) => {
 };
 export const resendMailForgetPassword = async (req, res) => {
     const { email } = req.body;
-    console.log("email in forget resend", email);
     try {
         if (!email) {
             return res

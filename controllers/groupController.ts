@@ -3,7 +3,6 @@ import type { Request, Response } from "express";
 import { io, onlineUsers } from "../server.js";
 export const createGroup = async (req: Request, res: Response) => {
   const { groupName, selectedMembers, groupCreatedUserId } = req.body;
-  console.log(selectedMembers);
   const image = req.file;
   try {
     if (!groupName?.trim()) {
@@ -15,11 +14,9 @@ export const createGroup = async (req: Request, res: Response) => {
     let selectedMembersRow;
     if (!Array.isArray(selectedMembers)) {
       selectedMembersRow = [selectedMembers];
-      console.log("array is crete");
     }
 
     selectedMembersRow = selectedMembers.map(Number);
-    console.log(selectedMembersRow);
     if (selectedMembersRow.length < 2) {
       return res.status(400).json({
         success: false,
@@ -44,7 +41,6 @@ export const createGroup = async (req: Request, res: Response) => {
         name: true,
       },
     });
-    console.log(members);
     const group = await prisma.group.create({
       data: {
         name: groupName,
@@ -63,7 +59,6 @@ export const createGroup = async (req: Request, res: Response) => {
       });
       groupMembers.push(gm);
     }
-    console.log(groupMembers, "here is group members");
     selectedMembers.forEach((userId: any) => {
       const socketId = onlineUsers[userId];
       if (socketId) {
@@ -92,7 +87,6 @@ export const createGroup = async (req: Request, res: Response) => {
 };
 export const updatelastMessageId = async (req: Request, res: Response) => {
   const { groupId, lastMessageId, userId } = req.body;
-  console.log(groupId, lastMessageId, userId);
   try {
     await prisma.groupMembers.update({
       where: {

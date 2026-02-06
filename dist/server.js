@@ -103,7 +103,6 @@ io.on("connection", (socket) => {
         }
     });
     socket.on("status:delivered", async ({ messageId, conversationId }) => {
-        console.log("conversation is mainderf kehriher jherhgr", conversationId);
         const message = await prisma.messages.findUnique({
             where: { id: messageId },
         });

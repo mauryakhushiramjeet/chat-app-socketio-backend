@@ -2,7 +2,6 @@ import { prisma } from "../lib/prisma.js";
 import type { Request, Response } from "express";
 export const sidebarChatList = async (req: Request, res: Response) => {
   const { loggedInUserId } = req.query;
-  // console.log("in srver", loggedInUserId);
   try {
     if (!loggedInUserId) {
       return res.status(400).json({
@@ -80,7 +79,6 @@ export const sidebarChatList = async (req: Request, res: Response) => {
             (a, b) =>
               new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
           );
-        // console.log("chat message is here", chatMessages, "this");
         const newLastMessage = chatMessages.length
           ? chatMessages[chatMessages.length - 1]
           : null;
@@ -107,7 +105,6 @@ export const sidebarChatList = async (req: Request, res: Response) => {
         messageSenderId: lastMessage?.senderId,
       };
     });
-    // console.log("status", updatedConversation);
     const formatedChatConversation = updatedConversation.map((conversation) => {
       const isLoggedUserIschatUser =
         conversation.chatUser?.id === Number(loggedInUserId);
@@ -235,7 +232,6 @@ export const sidebarChatList = async (req: Request, res: Response) => {
       };
     });
 
-    // console.log(formatedGroupConversation, "group");
     const sidebarchatsAndGroupConverstions = [
       ...formatedChatConversation,
       ...formatedGroupConversation,
