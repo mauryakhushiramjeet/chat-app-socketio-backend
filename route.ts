@@ -22,7 +22,11 @@ import {
   getGroupMemeberLastMsgSeenId,
   updatelastMessageId,
 } from "./controllers/groupController.js";
-import { sidebarChatList } from "./controllers/sidebarController.js";
+import {
+  acceptRequest,
+  getPendingReuests,
+  sidebarChatList,
+} from "./controllers/sidebarController.js";
 import {
   emailOtpVerify,
   forgetPasswordEmailVerify,
@@ -53,6 +57,8 @@ router.put("/updateMessageFile", upload.array("file"), editMessageFile);
 router.post("/resendMailForgetPassword", resendMailForgetPassword);
 router.post("/forgetPassword_EmailVerify", forgetPasswordEmailVerify);
 router.get("/userLastMsgSeenDetail", getGroupMemeberLastMsgSeenId);
+router.get("/getPendingRequest", getPendingReuests);
+router.put("/acceptRequest", acceptRequest);
 router.post("/resendMail", resendMailVerify);
 router.post("/resetPassword", resetPassword);
 export default router;

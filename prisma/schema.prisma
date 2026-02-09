@@ -63,9 +63,11 @@ model ChatConversation {
   currentUser          User     @relation("currentUser", fields: [currentUserId], references: [id])
   chatUser             User     @relation("chatUser", fields: [chatUserId], references: [id])
   lastMessage          String
+  reuestAccepted       Boolean  @default(false)
   lastMessageId        Int?
   lastMessageCreatedAt DateTime @default(now())
 }
+
 
 model Group {
   id           Int            @id @default(autoincrement())

@@ -65,7 +65,7 @@ export const resentOtpEmail = async (req, res) => {
                 .status(404)
                 .json({ success: false, message: "User not found" });
         }
-        const otp = Math.floor(100000 + Math.random() * 999999).toString();
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpAt = new Date(Date.now() + 5 * 60 * 1000);
         await prisma.user.update({
             where: { email },
@@ -100,7 +100,7 @@ export const forgetPasswordEmailVerify = async (req, res) => {
                 .status(404)
                 .json({ success: false, message: "User not found" });
         }
-        const otp = Math.floor(100000 + Math.random() * 999999).toString();
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpAt = new Date(Date.now() + 5 * 60 * 1000);
         await prisma.user.update({
             where: { email },
@@ -135,7 +135,7 @@ export const resendMailForgetPassword = async (req, res) => {
                 .status(404)
                 .json({ success: false, message: "User not found" });
         }
-        const otp = Math.floor(100000 + Math.random() * 999999).toString();
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpAt = new Date(Date.now() + 5 * 60 * 1000);
         await prisma.user.update({
             where: { email },

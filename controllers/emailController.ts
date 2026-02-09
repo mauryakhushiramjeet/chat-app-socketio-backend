@@ -74,7 +74,7 @@ export const resentOtpEmail = async (req: Request, res: Response) => {
         .json({ success: false, message: "User not found" });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 999999).toString();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpAt = new Date(Date.now() + 5 * 60 * 1000);
     await prisma.user.update({
       where: { email },
@@ -114,7 +114,8 @@ export const forgetPasswordEmailVerify = async (
         .json({ success: false, message: "User not found" });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 999999).toString();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log("otp for forget password", otp);
     const otpExpAt = new Date(Date.now() + 5 * 60 * 1000);
     await prisma.user.update({
       where: { email },
@@ -151,7 +152,7 @@ export const resendMailForgetPassword = async (req: Request, res: Response) => {
         .json({ success: false, message: "User not found" });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 999999).toString();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpAt = new Date(Date.now() + 5 * 60 * 1000);
     await prisma.user.update({
       where: { email },
@@ -188,7 +189,7 @@ export const resendMailVerify = async (req: Request, res: Response) => {
         .json({ success: false, message: "User not found" });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 999999).toString();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpAt = new Date(Date.now() + 5 * 60 * 1000);
     await prisma.user.update({
       where: { email },
@@ -197,7 +198,7 @@ export const resendMailVerify = async (req: Request, res: Response) => {
     const subject = "Resend OTP Code for email verify";
     const warningMessage = "This is an email verify code. It will expire in";
     await sendVerifyEmail(email, otp, subject, warningMessage);
-    
+
     return res.status(200).json({
       success: true,
       message: "We have sent a code to your email please check",

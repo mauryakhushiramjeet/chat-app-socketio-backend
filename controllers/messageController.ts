@@ -371,7 +371,8 @@ export const sendMessage = async (req: Request, res: Response) => {
         },
       });
     }
-
+    const senderSocketId = onlineUsers[senderId];
+    const receiverSocketId = onlineUsers[receiverId];
     const message = await prisma.messages.create({
       data: {
         text: text,
@@ -416,31 +417,47 @@ export const sendMessage = async (req: Request, res: Response) => {
         currentUser: true,
       },
     });
-
+    let send_reuest = false;
     if (conversation) {
       if (
         Number(conversation?.chatUserId) !== Number(receiverId) &&
         Number(conversation?.currentUserId) !== Number(senderId)
       ) {
-        await prisma.chatConversation.update({
+        console.log("update user");
+        const updatedConversationUser = await prisma.chatConversation.update({
           where: { id: Number(conversation?.id) },
           data: {
             chatUserId: Number(receiverId),
             currentUserId: Number(senderId),
+            lastMessage: text.trim() !== "" ? text : "Send a file",
+            lastMessageCreatedAt: new Date(),
+            lastMessageId: response?.id,
+          },
+          include: { chatUser: true, currentUser: true },
+        });
+        conversationId = updatedConversationUser;
+        console.log(updatedConversationUser);
+      } else {
+        console.log("notttt user");
+
+        await prisma.chatConversation.update({
+          where: { id: Number(conversation?.id) },
+          data: {
+            lastMessage: text.trim() !== "" ? text : "Send a file",
+            lastMessageCreatedAt: new Date(),
+            lastMessageId: response?.id,
+          },
+          include: {
+            chatUser: true,
+            currentUser: true,
           },
         });
+        conversationId = conversation;
       }
-      await prisma.chatConversation.update({
-        where: { id: Number(conversation?.id) },
-        data: {
-          lastMessage: text.trim() !== "" ? text : "Send a file",
-          lastMessageCreatedAt: new Date(),
-          lastMessageId: response?.id,
-        },
-      });
-      conversationId = conversation;
     }
+
     if (!conversation) {
+      send_reuest = true;
       const createdConversation = await prisma.chatConversation.create({
         data: {
           currentUserId: Number(senderId),
@@ -455,9 +472,20 @@ export const sendMessage = async (req: Request, res: Response) => {
         },
       });
       conversationId = createdConversation;
+      io.to(receiverSocketId).emit("chatRequest", {
+        senderName: senderDetails?.name,
+        conversationId: createdConversation?.id,
+      });
     }
-    const senderSocketId = onlineUsers[senderId];
-    const receiverSocketId = onlineUsers[receiverId];
+    if (!conversation?.reuestAccepted) {
+      send_reuest = true;
+      console.log("reach here");
+      io.to(receiverSocketId).emit("chatRequest", {
+        senderName: senderDetails?.name,
+        conversationId: conversationId?.id,
+      });
+      console.log("send request by", senderDetails?.name, conversation?.id);
+    }
     const senderConversation = {
       ...conversationId,
       chatUser: conversationId?.chatUser,
@@ -487,7 +515,8 @@ export const sendMessage = async (req: Request, res: Response) => {
         id: replyMessage?.id,
       },
     });
-
+    // meas no conversation yet send reuest for chat
+    if (send_reuest) return;
     io.to(String(receiverSocketId)).emit("newMessage", {
       clientMessageId,
       response,
