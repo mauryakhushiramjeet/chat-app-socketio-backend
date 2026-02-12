@@ -154,7 +154,7 @@ export const getGroupMessages = async (req, res) => {
     if (!groupId) {
         return res.status(400).json({
             success: false,
-            message: "Group ID is required",
+            message: "Group ID is Required",
         });
     }
     try {
