@@ -571,6 +571,7 @@ export const sendMessage = async (req: Request, res: Response) => {
           "chat",
         ),
       );
+      console.log(senderDetails?.image, "print image whene user ofline");
     } else if (
       receiverSocketId &&
       userChatId[receiverId] !== `chatId_${conversationId?.id}`
@@ -583,6 +584,10 @@ export const sendMessage = async (req: Request, res: Response) => {
           senderDetails?.image ?? "",
           "chat",
         ),
+      );
+      console.log(
+        senderDetails?.image,
+        "print image whene user on;line but has chosses different chtalist",
       );
     } else {
       io.to(receiverSocketId).emit("receiveNotification", {
