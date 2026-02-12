@@ -30,8 +30,21 @@ model User {
   currentUser               ChatConversation[]   @relation("currentUser")
   ChatUser                  ChatConversation[]   @relation("chatUser")
   userDeviceFcmToken        UserDeviceFcmToken[]
-  LastActiveAt              DateTime?
-  createdAt                 DateTime             @default(now())
+  blocker                   BlockUser[]          @relation("blocker")
+  blocked                   BlockUser[]          @relation("blocked")
+
+  LastActiveAt DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model BlockUser {
+  id              Int  @id @default(autoincrement())
+  blocker_user_id Int
+  blocked_user_id Int
+  blocker         User @relation("blocker", fields: [blocker_user_id], references: [id])
+  blocked         User @relation("blocked", fields: [blocked_user_id], references: [id])
+
+  @@unique([blocked_user_id, blocker_user_id])
 }
 
 model UserDeviceFcmToken {

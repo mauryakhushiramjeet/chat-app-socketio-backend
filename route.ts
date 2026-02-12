@@ -34,7 +34,11 @@ import {
   resendMailForgetPassword,
   resendMailVerify,
 } from "./controllers/emailController.js";
-
+import {
+  blockUser,
+  ckeckUserBlocked,
+  unBlockUser,
+} from "./controllers/blockController.js";
 const router = Router();
 
 router.post("/signup", upload.single("image"), signup);
@@ -63,4 +67,8 @@ router.put("/acceptRequest", acceptRequest);
 router.post("/resendMail", resendMailVerify);
 router.post("/save-fcm-token", saveFcmToken);
 router.post("/resetPassword", resetPassword);
+router.post("/blockUser", blockUser);
+router.delete("/unBlockUser", unBlockUser);
+router.get("/checkUserBlock", ckeckUserBlocked);
+
 export default router;
