@@ -1,7 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import type { Request, Response } from "express";
 import { io, onlineUsers, userChatId } from "../server.js";
-import sendNotification from "../sendNotification";
+import sendNotification from "../sendNotification.js";
 
 export const getMessages = async (req: Request, res: Response) => {
   const { senderId, receiverId, lastMessageId } = req.query; // <-- use query
