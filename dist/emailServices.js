@@ -1,31 +1,36 @@
 import nodemailer from "nodemailer";
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.USER_EMAIL,
-    pass: process.env.GOOGLE_APP_PASSWORD,
-  },
+    service: "gmail",
+    auth: {
+        user: process.env.USER_EMAIL,
+        pass: process.env.GOOGLE_APP_PASSWORD,
+    },
 });
+// const transporter = nodemailer.createTransport({
+//   host: "smtp.gmail.com",
+//   port: 465,
+//   secure: true,
+//   auth: {
+//     user: process.env.USER_EMAIL,
+//     pass: process.env.GOOGLE_APP_PASSWORD,
+//   },
+//   connectionTimeout: 60_000,
+// });
 transporter.verify((error) => {
-  if (error) {
-    console.log("Email transport error:", error);
-  } else {
-    console.log("Email is ready to send");
-  }
+    if (error) {
+        console.log("Email transport error:", error);
+    }
+    else {
+        console.log(`Email is ready to send  ${process.env.GOOGLE_APP_PASSWORD} ${process.env.USER_EMAIL}`);
+    }
 });
-// Function to send OTP email
-export const sendVerifyEmail = async (
-  toEmail,
-  verificationCode,
-  subject,
-  warningMessage,
-) => {
-  try {
-    const mailOptions = {
-      from: process.env.USER_EMAIL,
-      to: toEmail,
-      subject: `${subject}`, // Keeping your exact subject
-      html: `
+export const sendVerifyEmail = async (toEmail, verificationCode, subject, warningMessage) => {
+    try {
+        const mailOptions = {
+            from: process.env.USER_EMAIL,
+            to: toEmail,
+            subject: `${subject}`, // Keeping your exact subject
+            html: `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -92,12 +97,13 @@ export const sendVerifyEmail = async (
     </body>
     </html>
   `,
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    return true;
-  } catch (error) {
-    console.error("Error sending OTP email:", error);
-    return false;
-  }
+        };
+        const info = await transporter.sendMail(mailOptions);
+        console.log("Message sent:", info.response);
+        return true;
+    }
+    catch (error) {
+        console.error("Error sending OTP email:", error);
+        return false;
+    }
 };

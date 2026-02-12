@@ -15,6 +15,7 @@ export const io = new Server(server, {
     },
 });
 export const onlineUsers = {};
+export const userChatId = {};
 app.use((req, res, next) => {
     res.setHeader("ngrok-skip-browser-warning", "true");
     next();
@@ -91,16 +92,31 @@ io.on("connection", (socket) => {
             });
         }
         else {
-            const roomId = senderId < receiverId
-                ? `${senderId}-${receiverId}`
-                : `${receiverId}-${senderId}`;
-            socket.to(roomId).emit("userStopTyping", {
+            // const roomId =
+            //   senderId < receiverId
+            //     ? `${senderId}-${receiverId}`
+            //     : `${receiverId}-${senderId}`;
+            const reciversSocketId = onlineUsers[receiverId];
+            socket.to(reciversSocketId).emit("userStopTyping", {
                 senderId,
                 receiverId,
                 type,
                 groupId: null,
             });
         }
+    });
+    socket.on("chatId", ({ userId, chatId }) => {
+        if (!chatId)
+            return;
+        if (userChatId[userId]) {
+            if (userChatId[userId] !== `chatId_${chatId}`) {
+                userChatId[userId] = `chatId_${chatId}`;
+            }
+        }
+        else {
+            userChatId[userId] = `chatId_${chatId}`;
+        }
+        console.log(userChatId, "chat list id here");
     });
     socket.on("status:delivered", async ({ messageId, conversationId }) => {
         const message = await prisma.messages.findUnique({
@@ -623,14 +639,16 @@ io.on("connection", (socket) => {
         const disconnectedUserId = Object.keys(onlineUsers).find((id) => onlineUsers[id] === socket.id);
         if (disconnectedUserId) {
             delete onlineUsers[disconnectedUserId];
+            delete userChatId[disconnectedUserId];
+            const userUpadted = await prisma.user.update({
+                where: { id: Number(userId) },
+                data: {
+                    LastActiveAt: new Date(),
+                },
+            });
+            // console.log(userChatId);
+            io.emit("user-disconnected", disconnectedUserId);
         }
-        const userUpadted = await prisma.user.update({
-            where: { id: Number(userId) },
-            data: {
-                LastActiveAt: new Date(),
-            },
-        });
-        io.emit("user-disconnected", disconnectedUserId);
     });
 });
 server.listen(PORT, () => {

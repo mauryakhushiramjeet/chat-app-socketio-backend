@@ -15,6 +15,8 @@ export const io = new Server(server, {
   },
 });
 export const onlineUsers: { [key: string]: string } = {};
+export const userChatId: { [key: string]: string } = {};
+
 app.use((req, res, next) => {
   res.setHeader("ngrok-skip-browser-warning", "true");
   next();
@@ -105,7 +107,17 @@ io.on("connection", (socket) => {
       });
     }
   });
-
+  socket.on("chatId", ({ userId, chatId }) => {
+    if (!chatId) return;
+    if (userChatId[userId]) {
+      if (userChatId[userId] !== `chatId_${chatId}`) {
+        userChatId[userId] = `chatId_${chatId}`;
+      }
+    } else {
+      userChatId[userId] = `chatId_${chatId}`;
+    }
+    console.log(userChatId, "chat list id here");
+  });
   socket.on("status:delivered", async ({ messageId, conversationId }) => {
     const message = await prisma.messages.findUnique({
       where: { id: messageId },
@@ -663,6 +675,7 @@ io.on("connection", (socket) => {
     );
     if (disconnectedUserId) {
       delete onlineUsers[disconnectedUserId];
+      delete userChatId[disconnectedUserId];
 
       const userUpadted = await prisma.user.update({
         where: { id: Number(userId) },
@@ -670,6 +683,7 @@ io.on("connection", (socket) => {
           LastActiveAt: new Date(),
         },
       });
+      // console.log(userChatId);
       io.emit("user-disconnected", disconnectedUserId);
     }
   });

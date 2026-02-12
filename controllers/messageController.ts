@@ -1,7 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import type { Request, Response } from "express";
-import { io, onlineUsers } from "../server.js";
-import { Socket } from "socket.io";
+import { io, onlineUsers, userChatId } from "../server.js";
+import sendNotification from "../sendNotification";
 
 export const getMessages = async (req: Request, res: Response) => {
   const { senderId, receiverId, lastMessageId } = req.query; // <-- use query
@@ -536,14 +536,64 @@ export const sendMessage = async (req: Request, res: Response) => {
         // replyMessageSenderId: replyMessage?.replyMessageSenderId,
       },
     });
-    io.to(receiverSocketId).emit("receiveNotification", {
-      senderId: senderId,
-      senderName: senderDetails?.name,
-      senderImage: senderDetails?.image,
-      message: req?.file ? "Sent a file" : text,
-      chatType: "chat",
-      messageId: message?.id,
+
+    const devices = await prisma.userDeviceFcmToken.findMany({
+      where: {
+        userId: Number(receiverId),
+      },
+      select: {
+        fcm_Token: true,
+        userId: true,
+      },
     });
+    console.log(
+      userChatId[receiverId] !== `chatId_${conversationId?.id}`,
+      "is same chat",
+      conversationId?.id,
+      userChatId,
+    );
+    // devices.map((d) =>
+    //   sendNotification(
+    //     d.fcm_Token,
+    //     senderDetails?.name ?? "",
+    //     text,
+    //     senderDetails?.image ?? "",
+    //   ),
+    // );
+
+    if (!receiverSocketId) {
+      devices.map((d) =>
+        sendNotification(
+          d.fcm_Token,
+          senderDetails?.name ?? "",
+          text,
+          senderDetails?.image ?? "",
+          "chat",
+        ),
+      );
+    } else if (
+      receiverSocketId &&
+      userChatId[receiverId] !== `chatId_${conversationId?.id}`
+    ) {
+      devices.map((d) =>
+        sendNotification(
+          d.fcm_Token,
+          senderDetails?.name ?? "",
+          text,
+          senderDetails?.image ?? "",
+          "chat",
+        ),
+      );
+    } else {
+      io.to(receiverSocketId).emit("receiveNotification", {
+        senderId: senderId,
+        senderName: senderDetails?.name,
+        senderImage: senderDetails?.image,
+        message: req?.file ? "Sent a file" : text,
+        chatType: "chat",
+        messageId: message?.id,
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -623,6 +673,13 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
         },
       });
     }
+    const senderDetails = await prisma.user.findUnique({
+      where: { id: Number(messageSenderId) },
+      select: {
+        image: true,
+        name: true,
+      },
+    });
     const createMessage = await prisma.groupMessage.create({
       data: {
         text: message,
@@ -658,40 +715,135 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
       );
       reponseFiles = createdFile;
     }
-    group.groupMembers.map((user) => {
-      const socketId = onlineUsers[user?.userId];
-      if (socketId) {
-        io.to(String(socketId)).emit("receiveGropMessage", {
-          groupId: `group-${groupId}`,
-          message,
-          lastMessageId: createMessage?.id,
-          sender: createMessage?.sender,
-          file: reponseFiles,
-          messageSenderId,
-          replyMessageSenderId: createMessage?.replyMessageSenderId,
-          replyMessage: {
-            text: replyMessage?.text,
-            file:
-              replyMessage?.file && replyMessage?.file?.length > 0
-                ? replyMessage?.file
-                : null,
-            createdAt: replyMessage?.createdAt,
-            id: replyMessage?.id,
-            // replyMessageSenderId: replyMessage?.replyMessageSenderId,
+    await Promise.all(
+      group.groupMembers.map(async (user) => {
+        const socketId = onlineUsers[user?.userId];
+
+        const devices = await prisma.userDeviceFcmToken.findMany({
+          where: {
+            userId: Number(user?.userId),
+          },
+          select: {
+            fcm_Token: true,
+            userId: true,
           },
         });
-        io.to(socketId).emit("receiveNotification", {
-          senderId: createMessage?.sender?.id,
-          senderName: createMessage?.sender?.name,
-          senderImage: group?.image,
-          message: req?.file ? "Sent a file" : message,
-          chatType: "group",
-          messageId: message?.id,
-          groupId,
-          groupName: group.name,
-        });
-      }
-    });
+        console.log(
+          devices,
+          "devices",
+          userChatId,
+          userChatId[user?.userId] !== `chatId_${groupId}`,
+          userChatId[user?.userId],
+          `chatId_${groupId}`,
+          socketId,
+        );
+
+        if (!socketId) {
+          console.log("run fisrt");
+          devices.map((d) =>
+            sendNotification(
+              d.fcm_Token,
+              group?.name ?? "",
+              `${senderDetails?.name}:${message}`,
+              group?.image ?? "",
+              "group",
+            ),
+          );
+          // io.to(socketId).emit("receiveNotification", {
+          //   senderId: createMessage?.sender?.id,
+          //   senderName: createMessage?.sender?.name,
+          //   senderImage: group?.image,
+          //   message: req?.file ? "Sent a file" : message,
+          //   chatType: "group",
+          //   messageId: message?.id,
+          //   groupId,
+          //   groupName: group.name,
+          // });
+        } else if (
+          socketId &&
+          userChatId[user?.userId] !== `chatId_${groupId}`
+        ) {
+          console.log("run second");
+
+          devices.map((d) =>
+            sendNotification(
+              d.fcm_Token,
+              group?.name ?? "",
+              `${senderDetails?.name}:${message}`,
+              group?.image ?? "",
+              "group",
+            ),
+          );
+          // io.to(socketId).emit("receiveNotification", {
+          //   senderId: createMessage?.sender?.id,
+          //   senderName: createMessage?.sender?.name,
+          //   senderImage: group?.image,
+          //   message: req?.file ? "Sent a file" : message,
+          //   chatType: "group",
+          //   messageId: message?.id,
+          //   groupId,
+          //   groupName: group.name,
+          // });
+        } else {
+          console.log("run last");
+          io.to(String(socketId)).emit("receiveGropMessage", {
+            groupId: `group-${groupId}`,
+            message,
+            lastMessageId: createMessage?.id,
+            sender: createMessage?.sender,
+            file: reponseFiles,
+            messageSenderId,
+            replyMessageSenderId: createMessage?.replyMessageSenderId,
+            replyMessage: {
+              text: replyMessage?.text,
+              file:
+                replyMessage?.file && replyMessage?.file?.length > 0
+                  ? replyMessage?.file
+                  : null,
+              createdAt: replyMessage?.createdAt,
+              id: replyMessage?.id,
+            },
+          });
+        }
+      }),
+    );
+
+    // Promise.all(group.groupMembers.map((user) => {)
+
+    //   const socketId = onlineUsers[user?.userId];
+    //      const devices = await prisma.userDeviceFcmToken.findMany({
+    //   where: {
+    //     userId: Number(user?.userId),
+    //   },
+    //   select: {
+    //     fcm_Token: true,
+    //     userId: true,
+    //   },
+    // });
+    //   if (!socketId) {
+
+    //     io.to(String(socketId)).emit("receiveGropMessage", {
+    //       groupId: `group-${groupId}`,
+    //       message,
+    //       lastMessageId: createMessage?.id,
+    //       sender: createMessage?.sender,
+    //       file: reponseFiles,
+    //       messageSenderId,
+    //       replyMessageSenderId: createMessage?.replyMessageSenderId,
+    //       replyMessage: {
+    //         text: replyMessage?.text,
+    //         file:
+    //           replyMessage?.file && replyMessage?.file?.length > 0
+    //             ? replyMessage?.file
+    //             : null,
+    //         createdAt: replyMessage?.createdAt,
+    //         id: replyMessage?.id,
+    //         // replyMessageSenderId: replyMessage?.replyMessageSenderId,
+    //       },
+    //     });
+
+    //   }
+    // });
     return res.status(201).json({
       success: true,
       message: "message sended successfully",

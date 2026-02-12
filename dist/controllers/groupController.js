@@ -56,6 +56,8 @@ export const createGroup = async (req, res) => {
             groupMembers.push(gm);
         }
         selectedMembers.forEach((userId) => {
+            if (Number(userId) === Number(groupCreatedUserId))
+                return;
             const socketId = onlineUsers[userId];
             if (socketId) {
                 io.to(socketId).emit("groupCreate", {
@@ -121,6 +123,28 @@ export const updatelastMessageId = async (req, res) => {
             },
         });
         return res.json({ success: true, memebers });
+    }
+    catch (error) {
+        return res.status(500).json({ success: false, message: error });
+    }
+};
+export const getGroupMemeberLastMsgSeenId = async (req, res) => {
+    const { groupId, userId } = req.query;
+    try {
+        const userMsgSeenDetaile = await prisma.groupMembers.findUnique({
+            where: {
+                userId_groupId: {
+                    userId: Number(userId),
+                    groupId: Number(groupId),
+                },
+            },
+            select: {
+                userId: true,
+                lastSeenMessageId: true,
+                groupId: true,
+            },
+        });
+        return res.json({ success: true, userMsgSeenDetaile });
     }
     catch (error) {
         return res.status(500).json({ success: false, message: error });

@@ -1,12 +1,11 @@
 import { Router } from "express";
 import { getAllConverSationUsers, getAllFriends, getCurrentUser, login, resetPassword, signup, updateProfile, } from "./controllers/userController.js";
 import upload from "./lib/cloudinary.js";
-import { editMessageFile, 
-// addMessage,
-getAllMyMessages, getGroupMessages, getMessages, sendGroupMessage, sendMessage, } from "./controllers/messageController.js";
-import { createGroup, updatelastMessageId, } from "./controllers/groupController.js";
-import { sidebarChatList } from "./controllers/sidebarController.js";
-import emailOtpVerify, { forgetPasswordEmailVerify, resendMailForgetPassword, } from "./controllers/emailController.js";
+import { editMessageFile, getAllMyMessages, getGroupMessages, getMessages, sendGroupMessage, sendMessage, } from "./controllers/messageController.js";
+import { createGroup, getGroupMemeberLastMsgSeenId, updatelastMessageId, } from "./controllers/groupController.js";
+import { saveFcmToken } from "./controllers/notificationTokenController.js";
+import { acceptRequest, getPendingReuests, sidebarChatList, } from "./controllers/sidebarController.js";
+import { emailOtpVerify, forgetPasswordEmailVerify, resendMailForgetPassword, resendMailVerify, } from "./controllers/emailController.js";
 const router = Router();
 router.post("/signup", upload.single("image"), signup);
 router.post("/login", login);
@@ -27,5 +26,10 @@ router.put("/updateMemberLastMsgId", updatelastMessageId);
 router.put("/updateMessageFile", upload.array("file"), editMessageFile);
 router.post("/resendMailForgetPassword", resendMailForgetPassword);
 router.post("/forgetPassword_EmailVerify", forgetPasswordEmailVerify);
+router.get("/userLastMsgSeenDetail", getGroupMemeberLastMsgSeenId);
+router.get("/getPendingRequest", getPendingReuests);
+router.put("/acceptRequest", acceptRequest);
+router.post("/resendMail", resendMailVerify);
+router.post("/save-fcm-token", saveFcmToken);
 router.post("/resetPassword", resetPassword);
 export default router;

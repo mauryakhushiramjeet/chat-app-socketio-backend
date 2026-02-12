@@ -1,6 +1,6 @@
 import { sendVerifyEmail } from "../emailServices.js";
 import { prisma } from "../lib/prisma.js";
-const emailOtpVerify = async (req, res) => {
+export const emailOtpVerify = async (req, res) => {
     const { email, otp } = req.body;
     try {
         if (!email || !otp) {
@@ -101,6 +101,7 @@ export const forgetPasswordEmailVerify = async (req, res) => {
                 .json({ success: false, message: "User not found" });
         }
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        console.log("otp for forget password", otp);
         const otpExpAt = new Date(Date.now() + 5 * 60 * 1000);
         await prisma.user.update({
             where: { email },
@@ -157,4 +158,39 @@ export const resendMailForgetPassword = async (req, res) => {
             .json({ success: false, message: "Internal server error" });
     }
 };
-export default emailOtpVerify;
+export const resendMailVerify = async (req, res) => {
+    const { email } = req.body;
+    try {
+        if (!email) {
+            return res
+                .status(400)
+                .json({ success: false, message: "Email is required" });
+        }
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            return res
+                .status(404)
+                .json({ success: false, message: "User not found" });
+        }
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpAt = new Date(Date.now() + 5 * 60 * 1000);
+        await prisma.user.update({
+            where: { email },
+            data: { verificationCode: otp, verificationCodeExpiresAt: otpExpAt },
+        });
+        const subject = "Resend OTP Code for email verify";
+        const warningMessage = "This is an email verify code. It will expire in";
+        await sendVerifyEmail(email, otp, subject, warningMessage);
+        return res.status(200).json({
+            success: true,
+            message: "We have sent a code to your email please check",
+            data: email,
+        });
+    }
+    catch (error) {
+        console.error("emailverify error:", error);
+        return res
+            .status(500)
+            .json({ success: false, message: "Internal server error" });
+    }
+};

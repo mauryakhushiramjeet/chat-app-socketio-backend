@@ -60,6 +60,7 @@ export const createGroup = async (req: Request, res: Response) => {
       groupMembers.push(gm);
     }
     selectedMembers.forEach((userId: any) => {
+      if (Number(userId) === Number(groupCreatedUserId)) return;
       const socketId = onlineUsers[userId];
       if (socketId) {
         io.to(socketId).emit("groupCreate", {

@@ -22,6 +22,7 @@ import {
   getGroupMemeberLastMsgSeenId,
   updatelastMessageId,
 } from "./controllers/groupController.js";
+import { saveFcmToken } from "./controllers/notificationTokenController.js";
 import {
   acceptRequest,
   getPendingReuests,
@@ -60,5 +61,6 @@ router.get("/userLastMsgSeenDetail", getGroupMemeberLastMsgSeenId);
 router.get("/getPendingRequest", getPendingReuests);
 router.put("/acceptRequest", acceptRequest);
 router.post("/resendMail", resendMailVerify);
+router.post("/save-fcm-token", saveFcmToken);
 router.post("/resetPassword", resetPassword);
 export default router;

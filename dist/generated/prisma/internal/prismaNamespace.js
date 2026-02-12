@@ -68,6 +68,7 @@ export const JsonNull = runtime.JsonNull;
 export const AnyNull = runtime.AnyNull;
 export const ModelName = {
     User: 'User',
+    UserDeviceFcmToken: 'UserDeviceFcmToken',
     Messages: 'Messages',
     ChatConversation: 'ChatConversation',
     Group: 'Group',
@@ -98,6 +99,11 @@ export const UserScalarFieldEnum = {
     LastActiveAt: 'LastActiveAt',
     createdAt: 'createdAt'
 };
+export const UserDeviceFcmTokenScalarFieldEnum = {
+    id: 'id',
+    userId: 'userId',
+    fcm_Token: 'fcm_Token'
+};
 export const MessagesScalarFieldEnum = {
     id: 'id',
     text: 'text',
@@ -115,6 +121,7 @@ export const ChatConversationScalarFieldEnum = {
     currentUserId: 'currentUserId',
     chatUserId: 'chatUserId',
     lastMessage: 'lastMessage',
+    reuestAccepted: 'reuestAccepted',
     lastMessageId: 'lastMessageId',
     lastMessageCreatedAt: 'lastMessageCreatedAt'
 };

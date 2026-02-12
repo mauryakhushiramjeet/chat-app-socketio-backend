@@ -14,23 +14,31 @@ datasource db {
 }
 
 model User {
-  id                        Int                @id @default(autoincrement())
+  id                        Int                  @id @default(autoincrement())
   name                      String
-  email                     String             @unique
+  email                     String               @unique
   password                  String
   image                     String?
   about                     String?
   verificationCode          String?
   verificationCodeExpiresAt DateTime?
-  emailVerify               Boolean            @default(false)
+  emailVerify               Boolean              @default(false)
   groupMember               GroupMembers[]
   groupMessage              GroupMessage[]
-  messageSent               Messages[]         @relation("setMessage")
-  messageReciev             Messages[]         @relation("recievMessage")
-  currentUser               ChatConversation[] @relation("currentUser")
-  ChatUser                  ChatConversation[] @relation("chatUser")
+  messageSent               Messages[]           @relation("setMessage")
+  messageReciev             Messages[]           @relation("recievMessage")
+  currentUser               ChatConversation[]   @relation("currentUser")
+  ChatUser                  ChatConversation[]   @relation("chatUser")
+  userDeviceFcmToken        UserDeviceFcmToken[]
   LastActiveAt              DateTime?
-  createdAt                 DateTime           @default(now())
+  createdAt                 DateTime             @default(now())
+}
+
+model UserDeviceFcmToken {
+  id        Int    @id @default(autoincrement())
+  userId    Int
+  user      User   @relation(fields: [userId], references: [id])
+  fcm_Token String @unique
 }
 
 enum Status {
@@ -67,7 +75,6 @@ model ChatConversation {
   lastMessageId        Int?
   lastMessageCreatedAt DateTime @default(now())
 }
-
 
 model Group {
   id           Int            @id @default(autoincrement())

@@ -1,4 +1,3 @@
-import { send } from "node:process";
 import { prisma } from "../lib/prisma.js";
 import type { Request, Response } from "express";
 export const sidebarChatList = async (req: Request, res: Response) => {
@@ -271,7 +270,7 @@ export const getPendingReuests = async (req: Request, res: Response) => {
       where: { chatUserId: Number(loggedInUserId), reuestAccepted: false },
     });
     console.log(myPendingRequest);
-    console.log(myPendingRequest, "my pending request");
+    // console.log(myPendingRequest, "my pending request");
     const findRequestSender = await Promise.all(
       myPendingRequest.map(
         async (sender) =>
