@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "postinstall": "npx prisma generate"
   },
+  
   "keywords": [],
   "author": "",
   "license": "ISC",
