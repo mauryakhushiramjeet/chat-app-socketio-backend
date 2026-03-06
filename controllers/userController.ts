@@ -38,7 +38,8 @@ export const signup = async (req: Request, res: Response) => {
       },
     });
     const userId = user?.id;
-    const token = createToken(userId);
+    const token = await createToken(userId);
+    console.log(token, "here is token");
     const subject = "Your OTP Code for Email Verification";
     const warningMessage =
       "This is an email verification code. It will expire in";
@@ -55,6 +56,7 @@ export const signup = async (req: Request, res: Response) => {
         about: user?.about,
         isEmailVerify: user?.emailVerify,
       },
+      token,
     });
   } catch (error) {
     console.log(error, "catch error");
@@ -138,6 +140,9 @@ export const login = async (req: Request, res: Response) => {
         .status(400)
         .json({ success: false, message: "Invalide password" });
     }
+    const userId = userExist?.id;
+    const token = await createToken(userId);
+    console.log(token, "here is token");
     return res.status(200).json({
       success: true,
       message: "User login successfully",
@@ -149,6 +154,7 @@ export const login = async (req: Request, res: Response) => {
         about: userExist?.about,
         isEmailVerify: userExist?.emailVerify,
       },
+      token,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error });
@@ -355,6 +361,39 @@ export const resetPassword = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       message: "Password has been reset successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error });
+  }
+};
+
+export const logOut = async (req: Request, res: Response) => {
+  const id = req.user ;
+  const { fcmToken } = req.body;
+  
+  console.log('fcmToken in logout', fcmToken);
+  try {
+    if (!id) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Id is required" });
+    }
+    const disconnectUserId = Object.keys(onlineUsers).find(
+      (user) => onlineUsers[user] === id,
+    );
+    if (disconnectUserId) {
+      delete onlineUsers[disconnectUserId];
+    }
+    await prisma.userDeviceFcmToken.delete({
+      where: {
+        fcm_Token: fcmToken,
+      },
+    });
+    io.emit("user-disconnected", disconnectUserId);
+
+    return res.status(200).json({
+      success: true,
+      message: "User logout successfully",
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error });

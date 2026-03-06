@@ -38,11 +38,12 @@ model User {
 }
 
 model BlockUser {
-  id              Int  @id @default(autoincrement())
+  id              Int      @id @default(autoincrement())
   blocker_user_id Int
   blocked_user_id Int
-  blocker         User @relation("blocker", fields: [blocker_user_id], references: [id])
-  blocked         User @relation("blocked", fields: [blocked_user_id], references: [id])
+  blocker         User     @relation("blocker", fields: [blocker_user_id], references: [id])
+  blocked         User     @relation("blocked", fields: [blocked_user_id], references: [id])
+  blockedAt       DateTime @default(now())
 
   @@unique([blocked_user_id, blocker_user_id])
 }

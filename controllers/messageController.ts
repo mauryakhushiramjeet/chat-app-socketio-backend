@@ -2,6 +2,7 @@ import { prisma } from "../lib/prisma.js";
 import type { Request, Response } from "express";
 import { io, onlineUsers, userChatId } from "../server.js";
 import sendNotification from "../sendNotification.js";
+import { send } from "node:process";
 
 export const getMessages = async (req: Request, res: Response) => {
   const { senderId, receiverId, lastMessageId } = req.query; // <-- use query
@@ -22,6 +23,7 @@ export const getMessages = async (req: Request, res: Response) => {
         },
       },
     });
+ 
     const messageWhere: any = {
       OR: [
         { senderId: Number(senderId), receiverId: Number(receiverId) },
@@ -29,11 +31,25 @@ export const getMessages = async (req: Request, res: Response) => {
       ],
     };
 
+    messageWhere.createdAt = {};
+
     if (clearChatExist?.deletedAt) {
-      messageWhere.createdAt = {
-        gt: clearChatExist.deletedAt,
-      };
+      messageWhere.createdAt.gt = clearChatExist.deletedAt;
     }
+
+    const isIamBlocked = await prisma.blockUser.findUnique({
+      where: {
+        blocked_user_id_blocker_user_id: {
+          blocked_user_id: Number(receiverId),
+          blocker_user_id: Number(senderId),
+        },
+      },
+    });
+
+    if (isIamBlocked?.blockedAt) {
+      messageWhere.createdAt.lt = isIamBlocked.blockedAt;
+    }
+    console.log(isIamBlocked, "isIamBlocked");
     const firstMessage = await prisma.messages.findFirst({
       where: messageWhere,
       orderBy: {
@@ -346,6 +362,21 @@ export const sendMessage = async (req: Request, res: Response) => {
         message: "Sender or Receiver does not exist",
       });
     }
+    const isSenderBlockedByReceiver = await prisma.blockUser.findFirst({
+      where: {
+        OR: [
+          {
+            blocked_user_id: Number(senderId),
+            blocker_user_id: Number(receiverId),
+          },
+          {
+            blocked_user_id: Number(receiverId),
+            blocker_user_id: Number(senderId),
+          },
+        ],
+      },
+    });
+    console.log(isSenderBlockedByReceiver, "isSenderBlockedByReceiver");
     const senderDetails = await prisma.user.findUnique({
       where: { id: Number(senderId) },
       select: {
@@ -436,10 +467,8 @@ export const sendMessage = async (req: Request, res: Response) => {
           include: { chatUser: true, currentUser: true },
         });
         conversationId = updatedConversationUser;
-        console.log(updatedConversationUser);
       } else {
-        console.log("notttt user");
-
+        console.log("reachhere ........");
         await prisma.chatConversation.update({
           where: { id: Number(conversation?.id) },
           data: {
@@ -491,6 +520,7 @@ export const sendMessage = async (req: Request, res: Response) => {
       chatUser: conversationId?.chatUser,
       currentUser: conversationId?.currentUser,
     };
+
     const receiverConversation = {
       ...conversationId,
       chatUser: conversationId?.currentUser, // sender
@@ -517,6 +547,9 @@ export const sendMessage = async (req: Request, res: Response) => {
     });
     // meas no conversation yet send reuest for chat
     if (send_reuest) return;
+    //here check that id sender id blocked on reciver side than do not send message
+    if (isSenderBlockedByReceiver) return;
+
     io.to(String(receiverSocketId)).emit("newMessage", {
       clientMessageId,
       response,
@@ -552,14 +585,6 @@ export const sendMessage = async (req: Request, res: Response) => {
       conversationId?.id,
       userChatId,
     );
-    // devices.map((d) =>
-    //   sendNotification(
-    //     d.fcm_Token,
-    //     senderDetails?.name ?? "",
-    //     text,
-    //     senderDetails?.image ?? "",
-    //   ),
-    // );
 
     if (!receiverSocketId) {
       devices.map((d) =>
@@ -571,7 +596,6 @@ export const sendMessage = async (req: Request, res: Response) => {
           "chat",
         ),
       );
-      console.log(senderDetails?.image, "print image whene user ofline");
     } else if (
       receiverSocketId &&
       userChatId[receiverId] !== `chatId_${conversationId?.id}`

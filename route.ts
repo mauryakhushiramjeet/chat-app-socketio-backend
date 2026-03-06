@@ -4,6 +4,7 @@ import {
   getAllFriends,
   getCurrentUser,
   login,
+  logOut,
   resetPassword,
   signup,
   updateProfile,
@@ -36,9 +37,10 @@ import {
 } from "./controllers/emailController.js";
 import {
   blockUser,
-  ckeckUserBlocked,
+  getAllBlockedUsersByLoggedInUser,
   unBlockUser,
 } from "./controllers/blockController.js";
+import { verifyToken } from "./authMiddleware/verifyToken.js";
 const router = Router();
 
 router.post("/signup", upload.single("image"), signup);
@@ -69,6 +71,11 @@ router.post("/save-fcm-token", saveFcmToken);
 router.post("/resetPassword", resetPassword);
 router.post("/blockUser", blockUser);
 router.delete("/unBlockUser", unBlockUser);
-router.get("/checkUserBlock", ckeckUserBlocked);
+router.get(
+  "/getAllBlockedUsers",
+  verifyToken,
+  getAllBlockedUsersByLoggedInUser,
+);
+router.post("/logout", verifyToken, logOut);
 
 export default router;
