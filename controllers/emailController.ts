@@ -115,7 +115,6 @@ export const forgetPasswordEmailVerify = async (
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log("otp for forget password", otp);
     const otpExpAt = new Date(Date.now() + 5 * 60 * 1000);
     await prisma.user.update({
       where: { email },

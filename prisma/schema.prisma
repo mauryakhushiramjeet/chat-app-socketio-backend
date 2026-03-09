@@ -43,6 +43,7 @@ model BlockUser {
   blocked_user_id Int
   blocker         User     @relation("blocker", fields: [blocker_user_id], references: [id])
   blocked         User     @relation("blocked", fields: [blocked_user_id], references: [id])
+  isUserBlock     Boolean
   blockedAt       DateTime @default(now())
 
   @@unique([blocked_user_id, blocker_user_id])

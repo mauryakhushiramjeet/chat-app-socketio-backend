@@ -243,8 +243,6 @@ export const getPendingReuests = async (req, res) => {
         const myPendingRequest = await prisma.chatConversation.findMany({
             where: { chatUserId: Number(loggedInUserId), reuestAccepted: false },
         });
-        console.log(myPendingRequest);
-        // console.log(myPendingRequest, "my pending request");
         const findRequestSender = await Promise.all(myPendingRequest.map(async (sender) => await prisma.user.findUnique({
             where: {
                 id: sender?.currentUserId,

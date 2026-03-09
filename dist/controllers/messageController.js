@@ -25,10 +25,20 @@ export const getMessages = async (req, res) => {
                 { senderId: Number(receiverId), receiverId: Number(senderId) },
             ],
         };
+        messageWhere.createdAt = {};
         if (clearChatExist?.deletedAt) {
-            messageWhere.createdAt = {
-                gt: clearChatExist.deletedAt,
-            };
+            messageWhere.createdAt.gt = clearChatExist.deletedAt;
+        }
+        const isIamBlocked = await prisma.blockUser.findUnique({
+            where: {
+                blocked_user_id_blocker_user_id: {
+                    blocked_user_id: Number(receiverId),
+                    blocker_user_id: Number(senderId),
+                },
+            },
+        });
+        if (isIamBlocked?.blockedAt) {
+            messageWhere.createdAt.lt = isIamBlocked.blockedAt;
         }
         const firstMessage = await prisma.messages.findFirst({
             where: messageWhere,
@@ -154,7 +164,7 @@ export const getGroupMessages = async (req, res) => {
     if (!groupId) {
         return res.status(400).json({
             success: false,
-            message: "Group ID is Required",
+            message: "Group ID is required",
         });
     }
     try {
@@ -291,7 +301,6 @@ export const getGroupMessages = async (req, res) => {
         });
     }
     catch (error) {
-        console.log(error);
         return res.status(500).json({
             success: false,
             message: "Something went wrong",
@@ -328,6 +337,20 @@ export const sendMessage = async (req, res) => {
                 message: "Sender or Receiver does not exist",
             });
         }
+        const isSenderBlockedByReceiver = await prisma.blockUser.findFirst({
+            where: {
+                OR: [
+                    {
+                        blocked_user_id: Number(senderId),
+                        blocker_user_id: Number(receiverId),
+                    },
+                    {
+                        blocked_user_id: Number(receiverId),
+                        blocker_user_id: Number(senderId),
+                    },
+                ],
+            },
+        });
         const senderDetails = await prisma.user.findUnique({
             where: { id: Number(senderId) },
             select: {
@@ -396,7 +419,6 @@ export const sendMessage = async (req, res) => {
         if (conversation) {
             if (Number(conversation?.chatUserId) !== Number(receiverId) &&
                 Number(conversation?.currentUserId) !== Number(senderId)) {
-                console.log("update user");
                 const updatedConversationUser = await prisma.chatConversation.update({
                     where: { id: Number(conversation?.id) },
                     data: {
@@ -409,10 +431,8 @@ export const sendMessage = async (req, res) => {
                     include: { chatUser: true, currentUser: true },
                 });
                 conversationId = updatedConversationUser;
-                console.log(updatedConversationUser);
             }
             else {
-                console.log("notttt user");
                 await prisma.chatConversation.update({
                     where: { id: Number(conversation?.id) },
                     data: {
@@ -451,12 +471,10 @@ export const sendMessage = async (req, res) => {
         }
         if (!conversation?.reuestAccepted) {
             send_reuest = true;
-            console.log("reach here");
             io.to(receiverSocketId).emit("chatRequest", {
                 senderName: senderDetails?.name,
                 conversationId: conversationId?.id,
             });
-            console.log("send request by", senderDetails?.name, conversation?.id);
         }
         const senderConversation = {
             ...conversationId,
@@ -489,6 +507,9 @@ export const sendMessage = async (req, res) => {
         // meas no conversation yet send reuest for chat
         if (send_reuest)
             return;
+        //here check that id sender id blocked on reciver side than do not send message
+        if (isSenderBlockedByReceiver)
+            return;
         io.to(String(receiverSocketId)).emit("newMessage", {
             clientMessageId,
             response,
@@ -516,15 +537,6 @@ export const sendMessage = async (req, res) => {
                 userId: true,
             },
         });
-        console.log(userChatId[receiverId] !== `chatId_${conversationId?.id}`, "is same chat", conversationId?.id, userChatId);
-        // devices.map((d) =>
-        //   sendNotification(
-        //     d.fcm_Token,
-        //     senderDetails?.name ?? "",
-        //     text,
-        //     senderDetails?.image ?? "",
-        //   ),
-        // );
         if (!receiverSocketId) {
             devices.map((d) => sendNotification(d.fcm_Token, senderDetails?.name ?? "", text, senderDetails?.image ?? "", "chat"));
         }
@@ -660,9 +672,7 @@ export const sendGroupMessage = async (req, res) => {
                     userId: true,
                 },
             });
-            console.log(devices, "devices", userChatId, userChatId[user?.userId] !== `chatId_${groupId}`, userChatId[user?.userId], `chatId_${groupId}`, socketId);
             if (!socketId) {
-                console.log("run fisrt");
                 devices.map((d) => sendNotification(d.fcm_Token, group?.name ?? "", `${senderDetails?.name}:${message}`, group?.image ?? "", "group"));
                 // io.to(socketId).emit("receiveNotification", {
                 //   senderId: createMessage?.sender?.id,
@@ -677,21 +687,9 @@ export const sendGroupMessage = async (req, res) => {
             }
             else if (socketId &&
                 userChatId[user?.userId] !== `chatId_${groupId}`) {
-                console.log("run second");
                 devices.map((d) => sendNotification(d.fcm_Token, group?.name ?? "", `${senderDetails?.name}:${message}`, group?.image ?? "", "group"));
-                // io.to(socketId).emit("receiveNotification", {
-                //   senderId: createMessage?.sender?.id,
-                //   senderName: createMessage?.sender?.name,
-                //   senderImage: group?.image,
-                //   message: req?.file ? "Sent a file" : message,
-                //   chatType: "group",
-                //   messageId: message?.id,
-                //   groupId,
-                //   groupName: group.name,
-                // });
             }
             else {
-                console.log("run last");
                 io.to(String(socketId)).emit("receiveGropMessage", {
                     groupId: `group-${groupId}`,
                     message,
@@ -752,7 +750,6 @@ export const sendGroupMessage = async (req, res) => {
         });
     }
     catch (error) {
-        console.log(error);
         return res.status(500).json({
             success: false,
             message: "Something went wrong",

@@ -1,6 +1,9 @@
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 
+interface ExtendedRequest extends Request {
+  user: any; // or specify the type of the user object
+}
 export const blockUser = async (req: Request, res: Response) => {
   const { blockerId, blockedId } = req.body;
   try {
@@ -31,9 +34,8 @@ export const getAllBlockedUsersByLoggedInUser = async (
   req: Request,
   res: Response,
 ) => {
-  const id = req.user;
+  const id =(req as any).user ;
   try {
-    console.log(id, "logged user oid");
     if (!id) {
       return res.status(400).json({
         success: false,

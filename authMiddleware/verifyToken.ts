@@ -1,12 +1,11 @@
-import { NextFunction } from "express";
+import { NextFunction, Request, Response } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 export const verifyToken = (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
-  const authorizationHeader = req.headers["authorization"];
-  // console.log(authorizationHeader, "authorizationHeader......");
+  const authorizationHeader = req.headers["authorization"] as string;
   if (!authorizationHeader) {
     // Handle the case where the authorization header is missing
     return next(new Error("Authorization header is missing"));

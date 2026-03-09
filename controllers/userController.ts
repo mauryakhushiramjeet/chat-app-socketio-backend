@@ -5,11 +5,12 @@ import type { Request, Response } from "express";
 import { io, onlineUsers } from "../server.js";
 import { createToken } from "../authMiddleware/createToken.js";
 import { sendVerifyEmail } from "../emailServices.js";
+interface ExtendedRequest extends Request {
+  user: any; // or specify the type of the user object
+}
 export const signup = async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
-    const image = req.file;
-
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -39,7 +40,6 @@ export const signup = async (req: Request, res: Response) => {
     });
     const userId = user?.id;
     const token = await createToken(userId);
-    console.log(token, "here is token");
     const subject = "Your OTP Code for Email Verification";
     const warningMessage =
       "This is an email verification code. It will expire in";
@@ -142,7 +142,6 @@ export const login = async (req: Request, res: Response) => {
     }
     const userId = userExist?.id;
     const token = await createToken(userId);
-    console.log(token, "here is token");
     return res.status(200).json({
       success: true,
       message: "User login successfully",
@@ -368,10 +367,9 @@ export const resetPassword = async (req: Request, res: Response) => {
 };
 
 export const logOut = async (req: Request, res: Response) => {
-  const id = req.user ;
+  const id =(req as any).user ;
   const { fcmToken } = req.body;
   
-  console.log('fcmToken in logout', fcmToken);
   try {
     if (!id) {
       return res

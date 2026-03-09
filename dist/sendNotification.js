@@ -1,7 +1,6 @@
 import admin from "./firebaseAdmin.js";
 const sendNotification = async (token, title, body, image, type) => {
     try {
-        console.log("in process to send notifications");
         await admin.messaging().send({
             token: token,
             // notification payload is REQUIRED for background notifications

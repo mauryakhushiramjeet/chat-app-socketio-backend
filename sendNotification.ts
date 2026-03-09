@@ -7,7 +7,6 @@ const sendNotification = async (
   type: string,
 ) => {
   try {
-    console.log("in process to send notifications",image);
     await admin.messaging().send({
       token: token,
       // notification payload is REQUIRED for background notifications

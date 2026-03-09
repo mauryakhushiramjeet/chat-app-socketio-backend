@@ -68,6 +68,7 @@ export const JsonNull = runtime.JsonNull;
 export const AnyNull = runtime.AnyNull;
 export const ModelName = {
     User: 'User',
+    BlockUser: 'BlockUser',
     UserDeviceFcmToken: 'UserDeviceFcmToken',
     Messages: 'Messages',
     ChatConversation: 'ChatConversation',
@@ -98,6 +99,12 @@ export const UserScalarFieldEnum = {
     emailVerify: 'emailVerify',
     LastActiveAt: 'LastActiveAt',
     createdAt: 'createdAt'
+};
+export const BlockUserScalarFieldEnum = {
+    id: 'id',
+    blocker_user_id: 'blocker_user_id',
+    blocked_user_id: 'blocked_user_id',
+    blockedAt: 'blockedAt'
 };
 export const UserDeviceFcmTokenScalarFieldEnum = {
     id: 'id',

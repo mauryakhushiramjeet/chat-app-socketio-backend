@@ -6,7 +6,6 @@ import { sendVerifyEmail } from "../emailServices.js";
 export const signup = async (req, res) => {
     try {
         const { name, email, password } = req.body;
-        const image = req.file;
         if (!name || !email || !password) {
             return res.status(400).json({
                 success: false,
@@ -32,7 +31,7 @@ export const signup = async (req, res) => {
             },
         });
         const userId = user?.id;
-        const token = createToken(userId);
+        const token = await createToken(userId);
         const subject = "Your OTP Code for Email Verification";
         const warningMessage = "This is an email verification code. It will expire in";
         await sendVerifyEmail(email, code, subject, warningMessage);
@@ -47,6 +46,7 @@ export const signup = async (req, res) => {
                 about: user?.about,
                 isEmailVerify: user?.emailVerify,
             },
+            token,
         });
     }
     catch (error) {
@@ -129,6 +129,8 @@ export const login = async (req, res) => {
                 .status(400)
                 .json({ success: false, message: "Invalide password" });
         }
+        const userId = userExist?.id;
+        const token = await createToken(userId);
         return res.status(200).json({
             success: true,
             message: "User login successfully",
@@ -140,6 +142,7 @@ export const login = async (req, res) => {
                 about: userExist?.about,
                 isEmailVerify: userExist?.emailVerify,
             },
+            token,
         });
     }
     catch (error) {
@@ -341,6 +344,34 @@ export const resetPassword = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Password has been reset successfully",
+        });
+    }
+    catch (error) {
+        return res.status(500).json({ success: false, message: error });
+    }
+};
+export const logOut = async (req, res) => {
+    const id = req.user;
+    const { fcmToken } = req.body;
+    try {
+        if (!id) {
+            return res
+                .status(400)
+                .json({ success: false, message: "Id is required" });
+        }
+        const disconnectUserId = Object.keys(onlineUsers).find((user) => onlineUsers[user] === id);
+        if (disconnectUserId) {
+            delete onlineUsers[disconnectUserId];
+        }
+        await prisma.userDeviceFcmToken.delete({
+            where: {
+                fcm_Token: fcmToken,
+            },
+        });
+        io.emit("user-disconnected", disconnectUserId);
+        return res.status(200).json({
+            success: true,
+            message: "User logout successfully",
         });
     }
     catch (error) {

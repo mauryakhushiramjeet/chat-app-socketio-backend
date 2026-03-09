@@ -116,7 +116,6 @@ io.on("connection", (socket) => {
     } else {
       userChatId[userId] = `chatId_${chatId}`;
     }
-    console.log(userChatId, "chat list id here");
   });
   socket.on("status:delivered", async ({ messageId, conversationId }) => {
     const message = await prisma.messages.findUnique({

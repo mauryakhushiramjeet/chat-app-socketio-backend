@@ -23,7 +23,7 @@ export const getMessages = async (req: Request, res: Response) => {
         },
       },
     });
- 
+
     const messageWhere: any = {
       OR: [
         { senderId: Number(senderId), receiverId: Number(receiverId) },
@@ -49,7 +49,7 @@ export const getMessages = async (req: Request, res: Response) => {
     if (isIamBlocked?.blockedAt) {
       messageWhere.createdAt.lt = isIamBlocked.blockedAt;
     }
-    console.log(isIamBlocked, "isIamBlocked");
+
     const firstMessage = await prisma.messages.findFirst({
       where: messageWhere,
       orderBy: {
@@ -317,7 +317,6 @@ export const getGroupMessages = async (req: Request, res: Response) => {
       firstMessageId: firstMessage?.id,
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       success: false,
       message: "Something went wrong",
@@ -376,7 +375,6 @@ export const sendMessage = async (req: Request, res: Response) => {
         ],
       },
     });
-    console.log(isSenderBlockedByReceiver, "isSenderBlockedByReceiver");
     const senderDetails = await prisma.user.findUnique({
       where: { id: Number(senderId) },
       select: {
@@ -454,7 +452,6 @@ export const sendMessage = async (req: Request, res: Response) => {
         Number(conversation?.chatUserId) !== Number(receiverId) &&
         Number(conversation?.currentUserId) !== Number(senderId)
       ) {
-        console.log("update user");
         const updatedConversationUser = await prisma.chatConversation.update({
           where: { id: Number(conversation?.id) },
           data: {
@@ -468,7 +465,6 @@ export const sendMessage = async (req: Request, res: Response) => {
         });
         conversationId = updatedConversationUser;
       } else {
-        console.log("reachhere ........");
         await prisma.chatConversation.update({
           where: { id: Number(conversation?.id) },
           data: {
@@ -508,12 +504,10 @@ export const sendMessage = async (req: Request, res: Response) => {
     }
     if (!conversation?.reuestAccepted) {
       send_reuest = true;
-      console.log("reach here");
       io.to(receiverSocketId).emit("chatRequest", {
         senderName: senderDetails?.name,
         conversationId: conversationId?.id,
       });
-      console.log("send request by", senderDetails?.name, conversation?.id);
     }
     const senderConversation = {
       ...conversationId,
@@ -579,12 +573,6 @@ export const sendMessage = async (req: Request, res: Response) => {
         userId: true,
       },
     });
-    console.log(
-      userChatId[receiverId] !== `chatId_${conversationId?.id}`,
-      "is same chat",
-      conversationId?.id,
-      userChatId,
-    );
 
     if (!receiverSocketId) {
       devices.map((d) =>
@@ -608,10 +596,6 @@ export const sendMessage = async (req: Request, res: Response) => {
           senderDetails?.image ?? "",
           "chat",
         ),
-      );
-      console.log(
-        senderDetails?.image,
-        "print image whene user on;line but has chosses different chtalist",
       );
     } else {
       io.to(receiverSocketId).emit("receiveNotification", {
@@ -757,18 +741,8 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
             userId: true,
           },
         });
-        console.log(
-          devices,
-          "devices",
-          userChatId,
-          userChatId[user?.userId] !== `chatId_${groupId}`,
-          userChatId[user?.userId],
-          `chatId_${groupId}`,
-          socketId,
-        );
 
         if (!socketId) {
-          console.log("run fisrt");
           devices.map((d) =>
             sendNotification(
               d.fcm_Token,
@@ -792,8 +766,6 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
           socketId &&
           userChatId[user?.userId] !== `chatId_${groupId}`
         ) {
-          console.log("run second");
-
           devices.map((d) =>
             sendNotification(
               d.fcm_Token,
@@ -803,18 +775,7 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
               "group",
             ),
           );
-          // io.to(socketId).emit("receiveNotification", {
-          //   senderId: createMessage?.sender?.id,
-          //   senderName: createMessage?.sender?.name,
-          //   senderImage: group?.image,
-          //   message: req?.file ? "Sent a file" : message,
-          //   chatType: "group",
-          //   messageId: message?.id,
-          //   groupId,
-          //   groupName: group.name,
-          // });
         } else {
-          console.log("run last");
           io.to(String(socketId)).emit("receiveGropMessage", {
             groupId: `group-${groupId}`,
             message,
@@ -880,7 +841,6 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
       files: reponseFiles,
     });
   } catch (error: any) {
-    console.log(error);
     return res.status(500).json({
       success: false,
       message: "Something went wrong",
